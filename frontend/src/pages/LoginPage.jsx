@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../api/client";
+import { saveSession } from "../api/auth";
 import "./login.css";
 
 function DropIcon({ size = 18 }) {
@@ -31,7 +33,17 @@ function EyeIcon({ off }) {
   );
 }
 
+// Turn a failed request into a short message for the user
+function messageFrom(err) {
+  if (!err.response) return "Cannot reach the server. Check that the backend is running.";
+  const detail = err.response.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg.replace(/^Value error, /, "");
+  return "Login failed. Please try again.";
+}
+
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -54,13 +66,18 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      // TODO: call the backend once POST /auth/login exists, for example:
-      // const res = await api.post("/auth/login", { email, password });
-      // save res.data.access_token (use `remember` to choose localStorage or sessionStorage)
-      // then navigate to the donor / hospital / admin dashboard by role
-      console.log("Login submitted", { email, remember });
-    } catch {
-      setError("Login failed. Check your email and password, then try again.");
+      const res = await api.post("/auth/login", { email: email.trim(), password });
+      saveSession(res.data, remember);
+
+      const { role } = res.data.user;
+      if (role === "donor") {
+        navigate("/donor");
+      } else {
+        // TODO: send hospitals to /hospital and admins to /admin once those dashboards exist
+        setError("Login worked, but the hospital and admin dashboards are not built yet.");
+      }
+    } catch (err) {
+      setError(messageFrom(err));
     } finally {
       setLoading(false);
     }

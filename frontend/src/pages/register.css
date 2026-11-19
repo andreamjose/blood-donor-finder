@@ -153,3 +153,12 @@
   background: #fdf1ef; color: var(--muted); font-size: 0.68rem; line-height: 1.5;
 }
 .register__notice-icon { display: grid; place-items: center; flex: none; color: var(--red); }
+
+.register__success {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #e8f5e9;
+  color: #1b5e20;
+  font-size: 14px;
+}

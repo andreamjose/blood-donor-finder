@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../api/client";
 import "./register.css";
 
 const BLOOD_GROUPS = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"];
@@ -103,12 +104,29 @@ function ageFrom(dob) {
   return age;
 }
 
+// Turns a backend error into a short message for the user
+function errorMessage(err) {
+  // No response at all means the backend could not be reached
+  if (!err.response) return "Cannot reach the server. Please try again.";
+  const detail = err.response.data?.detail;
+  // Simple message, for example "An account with this email already exists."
+  if (typeof detail === "string") return detail;
+  // Validation errors come as a list, each starting with "Value error, "
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d) => (d.msg || "").replace(/^Value error, /, ""))
+      .join(" ");
+  }
+  return "Could not create your account. Please try again.";
+}
+
 export default function RegisterPage() {
   const [role, setRole] = useState("donor");
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const isDonor = role === "donor";
   const set = (name) => (e) =>
@@ -151,20 +169,43 @@ export default function RegisterPage() {
   async function handleSubmit(ev) {
     ev.preventDefault();
     setFormError("");
+    setSuccess("");
     const found = validate();
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
+    // Convert the form's names (camelCase) to the names the backend expects (snake_case)
+    const payload = {
+      role,
+      email: values.email.trim(),
+      password: values.password,
+      city: values.city,
+      phone: values.phone.replace(/[\s-]/g, ""),
+    };
+    if (isDonor) {
+      payload.full_name = values.fullName.trim();
+      payload.dob = values.dob;
+      payload.gender = values.gender;
+      payload.blood_group = values.bloodGroup;
+      if (values.lastDonation) payload.last_donation_date = values.lastDonation;
+    } else {
+      payload.hospital_name = values.hospitalName.trim();
+      payload.address = values.address.trim();
+      payload.license_no = values.licenseNo.trim();
+    }
+
     setLoading(true);
     try {
-      // TODO: send to the backend once the field names are agreed, for example:
-      // await api.post("/auth/register", { role, ...fields });
-      // Donor: full name, email, password, dob, gender, blood group, city, phone, last donation date
-      // Hospital: hospital name, email, password, city, address, phone, license number
-      // Hospitals stay "pending" until an admin approves them.
-      console.log("Register submitted", { role, email: values.email });
-    } catch {
-      setFormError("Could not create your account. Please try again.");
+      await api.post("/auth/register", payload);
+      setSuccess(
+        isDonor
+          ? "Account created. You can now log in."
+          : "Account created. Your hospital is pending admin approval."
+      );
+      setValues(EMPTY);
+      setErrors({});
+    } catch (err) {
+      setFormError(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -338,6 +379,12 @@ export default function RegisterPage() {
             {errors.terms && <p className="field__error" role="alert">{errors.terms}</p>}
 
             {formError && <p className="register__error" role="alert">{formError}</p>}
+
+            {success && (
+              <p className="register__success" role="status">
+                {success} <Link to="/login" className="link">Go to login</Link>
+              </p>
+            )}
 
             <button type="submit" className="register__submit" disabled={loading}>
               {loading ? "Creating account..." : `Create ${isDonor ? "donor" : "hospital"} account`}
