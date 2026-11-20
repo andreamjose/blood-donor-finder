@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { clearSession } from "../../api/auth";
 import { Icon } from "./components";
-import { DONOR, REQUESTS } from "./donorData";
+import { fetchDonor, updateAvailability } from "./donorApi";
+import { REQUESTS } from "./donorData";
 import "./donor.css";
 
 const NAV = [
@@ -18,25 +20,72 @@ const CRUMBS = {
   "/donor/history": "Donation history",
 };
 
+const stateStyle = {
+  minHeight: "100vh",
+  display: "grid",
+  placeItems: "center",
+  alignContent: "center",
+  gap: "0.75rem",
+  fontFamily: "Inter, system-ui, sans-serif",
+  color: "#6b6560",
+  textAlign: "center",
+};
+
 export default function DonorLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  // State shared by all donor pages (sent down through the Outlet context)
-  const [donor, setDonor] = useState(DONOR);
+  // The donor's own details now come from the backend
+  const [donor, setDonor] = useState(null);
+  const [available, setAvailableState] = useState(true);
+  const [status, setStatus] = useState("loading"); // loading | ready | error
+  const [attempt, setAttempt] = useState(0);
+
+  // Still sample data until the requests endpoints exist
   const [requests, setRequests] = useState(REQUESTS);
-  const [available, setAvailable] = useState(true);
   const [query, setQuery] = useState("");
 
-  const newCount = requests.filter((r) => r.status === "new").length;
+  useEffect(() => {
+    let cancelled = false;
+    fetchDonor()
+      .then(({ donor, available }) => {
+        if (cancelled) return;
+        setDonor(donor);
+        setAvailableState(available);
+        setStatus("ready");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const code = err.response?.status;
+        if (code === 401 || code === 403) {
+          clearSession();
+          navigate("/login", { replace: true });
+        } else {
+          setStatus("error");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, attempt]);
+
+  async function setAvailable(value) {
+    const previous = available;
+    setAvailableState(value); // update the screen straight away
+    try {
+      await updateAvailability(value);
+    } catch {
+      setAvailableState(previous); // put it back if the server said no
+    }
+  }
 
   function respond(id, status) {
-    // TODO: send the response to the backend (PATCH) and then update the list
+    // TODO: send the response to the backend and then update the list
     setRequests((list) => list.map((r) => (r.id === id ? { ...r, status } : r)));
   }
 
   function logout() {
-    // TODO: also clear the stored login token
+    clearSession();
     navigate("/login");
   }
 
@@ -45,6 +94,21 @@ export default function DonorLayout() {
     navigate("/donor/requests");
   }
 
+  if (status === "loading") {
+    return <div style={stateStyle}>Loading your dashboard...</div>;
+  }
+  if (status === "error") {
+    return (
+      <div style={stateStyle}>
+        <p>We could not load your details. Check that the backend is running.</p>
+        <button type="button" onClick={() => { setStatus("loading"); setAttempt((n) => n + 1); }}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  const newCount = requests.filter((r) => r.status === "new").length;
   const crumb = CRUMBS[pathname.replace(/\/$/, "")] ?? "Overview";
 
   return (

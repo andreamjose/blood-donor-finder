@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { BloodChip, Icon, Toggle } from "./components";
+import { errorMessage, saveDonor } from "./donorApi";
 import {
   BLOOD_GROUPS, CITIES, GENDERS, ageFrom, eligibility, formatDate, todayIso,
 } from "./donorData";
@@ -35,23 +36,36 @@ export default function MyProfile() {
   const [errors, setErrors] = useState({});
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const dirty = JSON.stringify(form) !== JSON.stringify(donor);
   const { next, eligible } = eligibility(donor.lastDonation);
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
 
-  function save(ev) {
+  async function save(ev) {
     ev.preventDefault();
+    setFormError("");
     const found = validate(form);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
-    // TODO: send to the backend with PUT /donors/me
-    setDonor(form);
+
+    setSaving(true);
+    try {
+      const saved = await saveDonor(form);
+      setDonor(saved);
+      setForm(saved);
+    } catch (err) {
+      setFormError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   function cancel() {
     setForm(donor);
     setErrors({});
+    setFormError("");
   }
 
   return (
@@ -105,6 +119,8 @@ export default function MyProfile() {
             </Field>
           </div>
 
+          {formError && <p className="pf__error" role="alert">{formError}</p>}
+
           <div className="pf__foot">
             <p>
               Changing your last donation date recalculates your next eligible date using a
@@ -112,7 +128,9 @@ export default function MyProfile() {
             </p>
             <div className="actions">
               <button type="button" className="btn btn--ghost" onClick={cancel}>Cancel</button>
-              <button type="submit" className="btn btn--primary" disabled={!dirty}>Save changes</button>
+              <button type="submit" className="btn btn--primary" disabled={!dirty || saving}>
+                {saving ? "Saving..." : "Save changes"}
+              </button>
             </div>
           </div>
         </form>
