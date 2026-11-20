@@ -1,4 +1,4 @@
-from .routers import auth
+from .routers import auth, donors
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -16,6 +16,7 @@ app.add_middleware(
 )
 app.include_router(auth.router)
 app.include_router(auth.users_router)
+app.include_router(donors.router)
 @app.get("/health")
 def health(db: Session = Depends(get_db)):
     db.execute(text("SELECT 1"))
