@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..expiry import expire_old_requests
 from ..models import BloodRequest, Hospital, RequestResponse, User
 from ..security import require_role
 
@@ -53,6 +54,7 @@ def read_me(user: User = Depends(require_role("hospital")), db: Session = Depend
 
 @router.get("/me/summary", response_model=SummaryOut)
 def read_summary(user: User = Depends(require_role("hospital")), db: Session = Depends(get_db)):
+    expire_old_requests(db)
     h = get_hospital(db, user)
 
     def count_requests(request_status: str) -> int:

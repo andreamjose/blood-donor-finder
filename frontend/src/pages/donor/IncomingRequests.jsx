@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { BloodChip, HospitalAvatar, Icon, PriorityBadge, ResponseActions } from "./components";
-import { REQUEST_COUNTS, eligibility } from "./donorData";
+import { eligibility } from "./donorData"
 
 const TABS = [
   ["all", "All requests"],
@@ -18,10 +18,10 @@ export default function IncomingRequests() {
 
   const count = (s) => requests.filter((r) => r.status === s).length;
   const counts = {
-    all: REQUEST_COUNTS.all,
-    new: count("new"),
-    accepted: REQUEST_COUNTS.accepted + count("accepted"),
-    declined: REQUEST_COUNTS.declined + count("declined"),
+  all: requests.length,
+  new: count("new"),
+  accepted: count("accepted"),
+  declined: count("declined"),
   };
 
   const q = query.trim().toLowerCase();
@@ -85,7 +85,7 @@ export default function IncomingRequests() {
                   <HospitalAvatar />
                   <span>
                     <strong>{r.hospital}</strong>
-                    <small>{r.area} · {r.distance} away</small>
+                    <small>{r.area}</small>
                   </span>
                 </div>
                 <PriorityBadge level={r.priority} />
@@ -115,7 +115,7 @@ export default function IncomingRequests() {
             <p className="eyebrow">Request details</p>
             <h2>{selected.hospital}</h2>
             <span className="verified"><Icon name="check" size={12} /> Verified hospital</span>
-            <small className="detail__id">{selected.id}</small>
+            <small className="detail__id">{selected.code}</small>
 
             <dl className="detail__rows">
               <div><dt>Blood group</dt><dd>{selected.group}</dd></div>

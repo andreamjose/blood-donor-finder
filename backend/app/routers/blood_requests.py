@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -7,7 +7,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import BloodRequest, RequestResponse, User
+from ..expiry import expire_old_requests
+from ..matching import notify_donors
+from ..models import BloodRequest, Donor, RequestResponse, User
 from ..schemas import BLOOD_GROUPS
 from ..security import require_role
 from .hospitals import get_hospital
@@ -67,6 +69,15 @@ class RequestOut(BaseModel):
 
 class RequestCreated(RequestOut):
     donors_notified: int = 0
+
+
+class DonorResponseOut(BaseModel):
+    response_id: int
+    donor_name: str
+    blood_group: str
+    phone: Optional[str] = None
+    status: str
+    responded_at: Optional[datetime] = None
 
 
 def response_counts(db: Session, request_ids: list[int]):
@@ -149,11 +160,12 @@ def create_request(
     db.commit()
     db.refresh(req)
 
-    # TODO (matching engine): find eligible donors here, create their request_responses
-    # rows, queue the emails, and return how many donors were notified.
-    donors_notified = 0
+    donors_notified = notify_donors(db, req)
 
-    return RequestCreated(**build(req, {}, {}).model_dump(), donors_notified=donors_notified)
+    return RequestCreated(
+        **build(req, {req.id: donors_notified}, {}).model_dump(),
+        donors_notified=donors_notified,
+    )
 
 
 @router.get("", response_model=list[RequestOut])
@@ -162,6 +174,7 @@ def list_requests(
     user: User = Depends(require_role("hospital")),
     db: Session = Depends(get_db),
 ):
+    expire_old_requests(db)
     hospital = get_hospital(db, user)
     query = db.query(BloodRequest).filter(BloodRequest.hospital_id == hospital.id)
     if status_filter:
@@ -179,6 +192,7 @@ def read_request(
     user: User = Depends(require_role("hospital")),
     db: Session = Depends(get_db),
 ):
+    expire_old_requests(db)
     hospital = get_hospital(db, user)
     req = get_own_request(db, hospital.id, request_id)
     notified, accepted = response_counts(db, [req.id])
@@ -192,11 +206,81 @@ def update_status(
     user: User = Depends(require_role("hospital")),
     db: Session = Depends(get_db),
 ):
+    expire_old_requests(db)
     hospital = get_hospital(db, user)
     req = get_own_request(db, hospital.id, request_id)
     if req.status != "Open":
         raise HTTPException(status.HTTP_409_CONFLICT, "Only open requests can be cancelled.")
     req.status = data.status
+    db.commit()
+    db.refresh(req)
+    notified, accepted = response_counts(db, [req.id])
+    return build(req, notified, accepted)
+
+
+@router.get("/{request_id}/donors", response_model=list[DonorResponseOut])
+def request_donors(
+    request_id: int,
+    user: User = Depends(require_role("hospital")),
+    db: Session = Depends(get_db),
+):
+    hospital = get_hospital(db, user)
+    req = get_own_request(db, hospital.id, request_id)
+    rows = (
+        db.query(RequestResponse, Donor, User)
+        .join(Donor, Donor.id == RequestResponse.donor_id)
+        .join(User, User.id == Donor.user_id)
+        .filter(
+            RequestResponse.request_id == req.id,
+            RequestResponse.status.in_(["Accepted", "Donated"]),
+        )
+        .order_by(RequestResponse.responded_at.desc())
+        .all()
+    )
+    return [
+        DonorResponseOut(
+            response_id=resp.id,
+            donor_name=u.name,
+            blood_group=d.blood_group,
+            phone=d.phone,
+            status=resp.status,
+            responded_at=resp.responded_at,
+        )
+        for resp, d, u in rows
+    ]
+
+
+@router.post("/{request_id}/donors/{response_id}/donated", response_model=RequestOut)
+def mark_donated(
+    request_id: int,
+    response_id: int,
+    user: User = Depends(require_role("hospital")),
+    db: Session = Depends(get_db),
+):
+    expire_old_requests(db)
+    hospital = get_hospital(db, user)
+    req = get_own_request(db, hospital.id, request_id)
+    if req.status != "Open":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This request is no longer open.")
+
+    resp = (
+        db.query(RequestResponse)
+        .filter(RequestResponse.id == response_id, RequestResponse.request_id == req.id)
+        .first()
+    )
+    if resp is None or resp.status != "Accepted":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Only an accepted donor can be marked as donated.")
+
+    resp.status = "Donated"
+    resp.responded_at = datetime.now(timezone.utc)
+    req.units_fulfilled = (req.units_fulfilled or 0) + 1
+    if req.units_fulfilled >= req.units_needed:
+        req.status = "Fulfilled"
+
+    donor = db.query(Donor).filter(Donor.id == resp.donor_id).first()
+    if donor:
+        donor.last_donation_date = date.today()
+
     db.commit()
     db.refresh(req)
     notified, accepted = response_counts(db, [req.id])

@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearSession } from "../../api/auth";
+import { NotificationBell, UserMenu } from "../../components/Menus";
 import { Icon } from "./components";
-import { fetchDonor, updateAvailability } from "./donorApi";
-import { REQUESTS } from "./donorData";
+import {
+  errorMessage,
+  fetchDonations,
+  fetchDonor,
+  fetchIncomingRequests,
+  respondToRequest,
+  updateAvailability,
+} from "./donorApi";
 import "./donor.css";
+
+// Change this to your real support mailbox
+const SUPPORT_EMAIL = "blooddonorfinder@gmail.com";
 
 const NAV = [
   { to: "/donor", label: "Dashboard", icon: "grid", end: true },
@@ -35,14 +45,13 @@ export default function DonorLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  // The donor's own details now come from the backend
   const [donor, setDonor] = useState(null);
   const [available, setAvailableState] = useState(true);
   const [status, setStatus] = useState("loading"); // loading | ready | error
   const [attempt, setAttempt] = useState(0);
 
-  // Still sample data until the requests endpoints exist
-  const [requests, setRequests] = useState(REQUESTS);
+  const [requests, setRequests] = useState([]);
+  const [donations, setDonations] = useState([]);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -69,19 +78,40 @@ export default function DonorLayout() {
     };
   }, [navigate, attempt]);
 
+  // Load requests and donations, then refresh every 30 seconds
+  useEffect(() => {
+    if (status !== "ready") return;
+    let cancelled = false;
+    const load = () => {
+      fetchIncomingRequests()
+        .then((r) => { if (!cancelled) setRequests(r); })
+        .catch(() => {});
+      fetchDonations()
+        .then((d) => { if (!cancelled) setDonations(d); })
+        .catch(() => {});
+    };
+    load();
+    const timer = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [status]);
+
   async function setAvailable(value) {
     const previous = available;
-    setAvailableState(value); // update the screen straight away
+    setAvailableState(value);
     try {
       await updateAvailability(value);
     } catch {
-      setAvailableState(previous); // put it back if the server said no
+      setAvailableState(previous);
     }
   }
 
-  function respond(id, status) {
-    // TODO: send the response to the backend and then update the list
-    setRequests((list) => list.map((r) => (r.id === id ? { ...r, status } : r)));
+  async function respond(id, answer) {
+    try {
+      const updated = await respondToRequest(id, answer);
+      setRequests((list) => list.map((r) => (r.id === id ? updated : r)));
+    } catch (err) {
+      window.alert(errorMessage(err));
+    }
   }
 
   function logout() {
@@ -108,7 +138,8 @@ export default function DonorLayout() {
     );
   }
 
-  const newCount = requests.filter((r) => r.status === "new").length;
+  const newRequests = requests.filter((r) => r.status === "new");
+  const newCount = newRequests.length;
   const crumb = CRUMBS[pathname.replace(/\/$/, "")] ?? "Overview";
 
   return (
@@ -137,7 +168,10 @@ export default function DonorLayout() {
           <Icon name="heart" size={16} />
           <strong>A little help goes a long way.</strong>
           <p>Questions about donating? We're here for you.</p>
-          <a href="mailto:hello@blooddonorfinder.org">
+          <Link to="/guidelines">
+            Donation guidelines <Icon name="external" size={11} />
+          </Link>
+          <a href={`mailto:${SUPPORT_EMAIL}`}>
             Get support <Icon name="external" size={11} />
           </a>
         </div>
@@ -163,21 +197,29 @@ export default function DonorLayout() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </form>
-          <button type="button" className="dl__bell" aria-label="Notifications">
-            <Icon name="bell" size={18} />
-            {newCount > 0 && <i className="dl__dot" />}
-          </button>
-          <div className="dl__user">
-            <span>
-              <strong>{donor.fullName}</strong>
-              <small>{donor.city} · Donor</small>
-            </span>
-            <Icon name="chevron" size={16} />
-          </div>
+
+          <NotificationBell
+            to="/donor/requests"
+            items={newRequests.map((r) => ({
+              id: r.id,
+              title: r.hospital,
+              note: `${r.group} · ${r.units} ${r.units === 1 ? "unit" : "units"} · ${r.priority}`,
+            }))}
+          />
+
+          <UserMenu
+            name={donor.fullName}
+            sub={`${donor.city} · Donor`}
+            links={[
+              { to: "/donor/profile", label: "My profile" },
+              { to: "/donor/history", label: "Donation history" },
+            ]}
+            onLogout={logout}
+          />
         </header>
 
         <main className="dl__content">
-          <Outlet context={{ donor, setDonor, requests, respond, available, setAvailable, query }} />
+          <Outlet context={{ donor, setDonor, requests, respond, available, setAvailable, query, donations }} />
         </main>
       </div>
     </div>

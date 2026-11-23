@@ -1,0 +1,12 @@
+.info { min-height: 100vh; background: #fff; font-family: Inter, system-ui, sans-serif; color: #1c1917; }
+.info__bar { display: flex; justify-content: space-between; align-items: center; padding: 18px 32px; border-bottom: 1px solid #eee; }
+.info__brand { font-weight: 700; color: #a31621; text-decoration: none; }
+.info__back { background: none; border: 0; font: inherit; color: #57534e; cursor: pointer; }
+.info__body { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; line-height: 1.65; }
+.info__eyebrow { color: #a31621; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 8px; }
+.info__body h1 { font-size: 36px; margin: 0 0 12px; }
+.info__intro { color: #57534e; font-size: 18px; margin-bottom: 32px; }
+.info__body h2 { font-size: 20px; margin: 32px 0 8px; }
+.info__body ul { padding-left: 20px; }
+.info__note { background: #fdf3e3; color: #b45309; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+.info__updated { margin-top: 40px; color: #78716c; font-size: 14px; }

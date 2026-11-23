@@ -1,0 +1,18 @@
+.um { position: relative; }
+.um__btn { background: none; border: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.um__panel {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 50;
+  min-width: 200px; display: flex; flex-direction: column; padding: 6px;
+  background: #fff; border: 1px solid #e7e5e4; border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.um__panel--wide { min-width: 290px; }
+.um__panel a, .um__panel button {
+  display: block; padding: 10px 12px; border: 0; border-radius: 8px;
+  background: none; color: #1c1917; font: inherit; font-size: 14px;
+  text-align: left; text-decoration: none; cursor: pointer;
+}
+.um__panel a:hover, .um__panel button:hover { background: #fdf0ee; }
+.um__panel small { display: block; color: #78716c; font-size: 12px; }
+.um__title { margin: 0; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #78716c; text-transform: uppercase; }
+.um__empty { margin: 0; padding: 10px 12px; font-size: 14px; color: #78716c; }

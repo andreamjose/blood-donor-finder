@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/client";
-import { saveSession } from "../api/auth";
+import { getUser, homePathFor, saveSession } from "../api/auth";
 import "./login.css";
 
 function DropIcon({ size = 18 }) {
@@ -46,10 +46,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const current = getUser();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -67,14 +67,17 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.post("/auth/login", { email: email.trim(), password });
-      saveSession(res.data, remember);
+      saveSession(res.data);
 
       const { role } = res.data.user;
       if (role === "donor") {
         navigate("/donor");
-      } else {
-        // TODO: send hospitals to /hospital and admins to /admin once those dashboards exist
-        setError("Login worked, but the hospital and admin dashboards are not built yet.");
+      } else if (role === "hospital") {
+        navigate("/hospital");
+      } else if (role === "admin") {
+        navigate("/admin");
+       } else {
+        setError("This account type cannot log in here.");
       }
     } catch (err) {
       setError(messageFrom(err));
@@ -97,11 +100,7 @@ export default function LoginPage() {
           <p>Every donation begins with someone choosing to make a difference.</p>
         </div>
 
-        <div className="login__stat">
-          <strong>8,650+</strong>
-          <span>donations. Countless new tomorrows.</span>
-          <small>Be part of a community that cares.</small>
-        </div>
+       
 
         <p className="login__privacy">
           <LockIcon /> Your information stays private and secure.
@@ -111,6 +110,13 @@ export default function LoginPage() {
       {/* Right form */}
       <main className="login__main">
         <div className="login__form-wrap">
+          {current && (
+            <p className="login__error" role="status" style={{ background: "#f7f7f8", color: "#1c1917" }}>
+            You're signed in as <strong>{current.name}</strong> ({current.role}).{" "}
+           <Link to={homePathFor(current.role)} className="link">Continue to dashboard</Link>
+           {" "}or log in below as someone else.
+           </p>
+       )}
           <p className="login__eyebrow">Welcome back</p>
           <h1>Good to see you again.</h1>
           <p className="login__sub">Log in to your account and make a difference.</p>
@@ -151,14 +157,6 @@ export default function LoginPage() {
             </div>
 
             <div className="login__row">
-              <label className="check">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                />
-                Remember me
-              </label>
               <Link to="/forgot-password" className="link">Forgot password?</Link>
             </div>
 
