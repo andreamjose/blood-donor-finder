@@ -7,8 +7,6 @@ import { fetchHospital } from "./hospitalApi";
 import "../donor/donor.css";
 import "./hospital.css";
 
-// Change this to your real support mailbox
-const SUPPORT_EMAIL = "blooddonorfinder@gmail.com";
 
 const NAV = [
   { to: "/hospital", label: "Dashboard", icon: "grid", end: true },
@@ -20,6 +18,7 @@ const CRUMBS = {
   "/hospital": "Overview",
   "/hospital/requests": "My requests",
   "/hospital/requests/new": "Create request",
+  "/hospital/support": "Support"
 };
 
 const stateStyle = {
@@ -110,9 +109,9 @@ export default function HospitalLayout() {
           <Icon name="heart" size={16} />
           <strong>Every minute counts.</strong>
           <p>Mark urgent cases as Urgent or Critical so donors see them first.</p>
-          <a href={`mailto:${SUPPORT_EMAIL}`}>
-            Get support <Icon name="external" size={11} />
-          </a>
+          <Link to="/hospital/support">
+          Get support <Icon name="external" size={11} />
+          </Link>
         </div>
 
         <button type="button" className="dl__logout" onClick={logout}>

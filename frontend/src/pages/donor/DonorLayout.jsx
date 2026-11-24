@@ -13,8 +13,7 @@ import {
 } from "./donorApi";
 import "./donor.css";
 
-// Change this to your real support mailbox
-const SUPPORT_EMAIL = "blooddonorfinder@gmail.com";
+
 
 const NAV = [
   { to: "/donor", label: "Dashboard", icon: "grid", end: true },
@@ -28,6 +27,7 @@ const CRUMBS = {
   "/donor/requests": "Incoming requests",
   "/donor/profile": "My profile",
   "/donor/history": "Donation history",
+  "/donor/support": "Support",
 };
 
 const stateStyle = {
@@ -171,9 +171,9 @@ export default function DonorLayout() {
           <Link to="/guidelines">
             Donation guidelines <Icon name="external" size={11} />
           </Link>
-          <a href={`mailto:${SUPPORT_EMAIL}`}>
-            Get support <Icon name="external" size={11} />
-          </a>
+          <Link to="/donor/support">
+          Get support <Icon name="external" size={11} />
+          </Link>
         </div>
 
         <button type="button" className="dl__logout" onClick={logout}>

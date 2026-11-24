@@ -1,0 +1,11 @@
+.sp-card { padding: 24px; max-width: 640px; }
+.sp-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; font-size: 14px; font-weight: 600; }
+.sp-field input, .sp-field select, .sp-field textarea {
+  padding: 11px 12px; border: 1px solid #e5e5e5; border-radius: 8px;
+  font: inherit; font-weight: 400; background: #fff;
+}
+.sp-field input:focus, .sp-field select:focus, .sp-field textarea:focus { outline: 2px solid #a31621; outline-offset: -1px; }
+.sp-field small { font-weight: 400; color: #777; align-self: flex-end; }
+.sp-reply { margin: 0 0 18px; font-size: 14px; color: #57534e; }
+.sp-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.sp-ok { margin: 0 0 16px; padding: 12px 14px; border-radius: 8px; background: #e8f5ec; color: #166534; font-size: 14px; }

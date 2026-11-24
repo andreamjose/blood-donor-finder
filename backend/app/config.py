@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     mail_from: str = ""
     frontend_url: str = "http://localhost:5173"
     reset_token_expire_minutes: int = 30
+    support_email: str = "" 
 
     model_config = SettingsConfigDict(env_file=".env")
 

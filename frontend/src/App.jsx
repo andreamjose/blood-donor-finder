@@ -16,6 +16,7 @@ import CreateRequest from "./pages/hospital/CreateRequest";
 import MyRequests from "./pages/hospital/MyRequests";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminHospitals from "./pages/admin/AdminHospitals";
+import SupportPage from "./pages/SupportPage";
 
 export default function App() {
   return (
@@ -35,12 +36,14 @@ export default function App() {
           <Route path="requests" element={<IncomingRequests />} />
           <Route path="profile" element={<MyProfile />} />
           <Route path="history" element={<DonationHistory />} />
+          <Route path="support" element={<SupportPage />} />
         </Route>
 
         <Route path="/hospital" element={<ProtectedRoute role="hospital"><HospitalLayout /></ProtectedRoute>}>
           <Route index element={<HospitalDashboard />} />
           <Route path="requests" element={<MyRequests />} />
           <Route path="requests/new" element={<CreateRequest />} />
+          <Route path="support" element={<SupportPage />} />
         </Route>
 
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
