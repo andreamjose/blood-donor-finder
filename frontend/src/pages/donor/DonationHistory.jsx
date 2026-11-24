@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { BloodChip, Icon, StatCard } from "./components";
-import { DONATIONS, formatDate, toIso } from "./donorData";
+import { formatDate, toIso } from "./donorData";
 
 function cutoff(months) {
   const d = new Date();
@@ -23,12 +24,12 @@ function exportCsv(rows) {
 }
 
 export default function DonationHistory() {
+  const { donations } = useOutletContext();
   const [range, setRange] = useState("all");
 
-  // TODO: load the real donation list from the backend
-  const rows = DONATIONS.filter((r) => range === "all" || r.date >= cutoff(Number(range)));
-  const latest = DONATIONS[0];
-  const litres = ((DONATIONS.length * 450) / 1000).toFixed(1);
+  const rows = donations.filter((r) => range === "all" || r.date >= cutoff(Number(range)));
+  const latest = donations[0];
+  const litres = ((donations.length * 450) / 1000).toFixed(1);
 
   return (
     <>
@@ -37,7 +38,7 @@ export default function DonationHistory() {
           <h1>Donation history</h1>
           <p>Every visit is a reminder of the difference you make.</p>
         </div>
-        <button type="button" className="btn btn--ghost btn--icon" onClick={() => exportCsv(rows)}>
+        <button type="button" className="btn btn--ghost btn--icon" onClick={() => exportCsv(rows)} disabled={rows.length === 0}>
           <Icon name="download" size={14} /> Export history
         </button>
       </div>
@@ -45,7 +46,7 @@ export default function DonationHistory() {
       <div className="stats stats--three">
         <StatCard
           label="Lifetime donations"
-          value={String(DONATIONS.length).padStart(2, "0")}
+          value={String(donations.length).padStart(2, "0")}
           note="Thank you for showing up."
           icon="drop"
         />
@@ -53,13 +54,13 @@ export default function DonationHistory() {
           label="Blood donated"
           value={`${litres} L`}
           tone="red"
-          note={`${DONATIONS.length} donations × 450 mL`}
+          note={`${donations.length} donations × 450 mL`}
           icon="heart"
         />
         <StatCard
           label="Most recent donation"
-          value={formatDate(latest.date)}
-          note={`${latest.hospital}, ${latest.city}`}
+          value={latest ? formatDate(latest.date) : "-"}
+          note={latest ? `${latest.hospital}, ${latest.city}` : "No donations yet"}
           icon="calendar"
         />
       </div>
@@ -108,7 +109,7 @@ export default function DonationHistory() {
         </div>
 
         <p className="card__foot">
-          Showing {rows.length === DONATIONS.length ? "all " : ""}{rows.length} completed donations
+          Showing {rows.length === donations.length ? "all " : ""}{rows.length} completed donations
         </p>
       </section>
     </>

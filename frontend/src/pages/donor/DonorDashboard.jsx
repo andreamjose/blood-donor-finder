@@ -5,15 +5,14 @@ import {
 import { DONATIONS, REQUEST_COUNTS, eligibility, formatDate } from "./donorData";
 
 export default function DonorDashboard() {
-  const { donor, requests, respond, available, setAvailable } = useOutletContext();
+  const { donor, requests, respond, available, setAvailable, donations } = useOutletContext();
 
   const { next, eligible, daysLeft } = eligibility(donor.lastDonation);
   const firstName = donor.fullName.split(" ")[0];
   const newCount = requests.filter((r) => r.status === "new").length;
-  const accepted = REQUEST_COUNTS.accepted + requests.filter((r) => r.status === "accepted").length;
-  const total = String(DONATIONS.length).padStart(2, "0");
-  const latest = DONATIONS[0];
-
+  const accepted = requests.filter((r) => r.status === "accepted").length;
+  const total = String(donations.length).padStart(2, "0");
+  const latest = donations[0];
   return (
     <>
       <div className="page-head">
@@ -45,7 +44,7 @@ export default function DonorDashboard() {
 
       <div className="stats">
         <StatCard label="Total donations" value={total} note="A commitment that counts" icon="drop" />
-        <StatCard label="Requests received" value={REQUEST_COUNTS.all} note={`${newCount} new requests today`} icon="inbox" />
+        <StatCard label="Requests received" value={requests.length} note={`${newCount} awaiting your response`} icon="inbox" />
         <StatCard label="Requests accepted" value={accepted} note="Thank you for stepping up" icon="heart" />
         <StatCard
           label="Next eligible date"
@@ -87,13 +86,13 @@ export default function DonorDashboard() {
                       <HospitalAvatar />
                       <span>
                         <strong>{r.hospital}</strong>
-                        <small>{r.id}</small>
+                        <small>{r.code}</small>
                       </span>
                     </div>
                   </td>
                   <td><BloodChip group={r.group} /></td>
                   <td>{r.units}</td>
-                  <td>{r.area} · {r.distance}</td>
+                  <td>{r.area}</td>
                   <td><PriorityBadge level={r.priority} /></td>
                   <td>{r.received}</td>
                   <td><ResponseActions request={r} onRespond={respond} /></td>
@@ -108,10 +107,11 @@ export default function DonorDashboard() {
         <section className="card note-card">
           <span className="note-card__icon"><Icon name="heart" size={18} /></span>
           <div>
-            <h2>{DONATIONS.length} donations. A lasting impact.</h2>
+            <h2>{donations.length} {donations.length === 1 ? "donation" : "donations"}. A lasting impact.</h2>
             <p>
-              Thank you for making time for others. Your most recent donation was at{" "}
-              {latest.hospital} on {formatDate(latest.date)}.
+              {latest
+              ?`Thank you for making time for others. Your most recent donation was at ${latest.hospital} on ${formatDate(latest.date)}.`
+              : "Your first donation will show up here once a hospital confirms it."}
             </p>
             <Link to="/donor/history" className="link">
               View donation history <Icon name="arrow" size={13} />
@@ -124,9 +124,9 @@ export default function DonorDashboard() {
           <div>
             <h2>Before you donate</h2>
             <p>Stay hydrated, have a healthy meal and bring a photo ID. The hospital will confirm eligibility.</p>
-            <a href="#guidelines" className="link">
-              Read donation guidelines <Icon name="external" size={12} />
-            </a>
+            <Link to="/guidelines" className="link">
+            Read donation guidelines <Icon name="external" size={12} />
+            </Link>
           </div>
         </section>
       </div>

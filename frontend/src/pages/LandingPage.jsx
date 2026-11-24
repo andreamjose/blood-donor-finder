@@ -1,11 +1,5 @@
 import "./landing.css";
 
-const STATS = [
-  { value: "12,480+", label: "Registered donors" },
-  { value: "180+", label: "Verified hospitals" },
-  { value: "8,650+", label: "Successful donations" },
-];
-
 const STEPS = [
   {
     n: "01",
@@ -24,6 +18,24 @@ const STEPS = [
   },
 ];
 
+const HOSPITAL_STEPS = [
+  {
+    n: "01",
+    title: "Register your hospital",
+    text: "Create a hospital account with your licence details. An administrator verifies it before you can post.",
+  },
+  {
+    n: "02",
+    title: "Post a request",
+    text: "Choose the blood group, units, urgency and deadline. Matching donors in your city are alerted straight away.",
+  },
+  {
+    n: "03",
+    title: "Confirm donations",
+    text: "See who accepted, contact them, and mark each donation as complete to close the request.",
+  },
+];
+
 // Matches the compatibility rules used by the backend matching engine
 const COMPATIBILITY = [
   { group: "O+", donateTo: "O+, A+, B+, AB+", receiveFrom: "O+, O-" },
@@ -39,7 +51,7 @@ const COMPATIBILITY = [
 function DropIcon({ size = 18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2.5c3.6 4.3 6.5 7.9 6.5 11.4a6.5 6.5 0 0 1-13 0C5.5 10.400 8.400 6.800 12 2.500z" />
+      <path d="M12 2.5c3.6 4.3 6.5 7.9 6.5 11.4a6.5 6.5 0 0 1-13 0C5.5 10.4 8.4 6.8 12 2.5z" />
     </svg>
   );
 }
@@ -48,7 +60,7 @@ function CheckIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 12.500l4.500 4.500L19 7.500" />
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
     </svg>
   );
 }
@@ -91,7 +103,7 @@ export default function LandingPage() {
               </p>
               <div className="hero__buttons">
                 <a href="/register" className="btn btn--primary">Register as Donor</a>
-                <a href="/login" className="btn btn--outline">Hospital Login</a>
+                <a href="/login" className="btn btn--outline">Donor Login</a>
               </div>
               <ul className="hero__checks">
                 <li><CheckIcon /> Free to join</li>
@@ -129,20 +141,10 @@ export default function LandingPage() {
                   <small>Same city. Available. Eligible to donate.</small>
                 </div>
               </div>
-              <p className="hero__visual-note"><CheckIcon /> Eligibility checked automatically</p>
+              <p className="hero__visual-note">
+                <CheckIcon /> Example request. Donor gap, city and blood group are matched automatically.
+              </p>
             </div>
-          </div>
-        </section>
-
-        {/* Stats */}
-        <section className="stats" aria-label="Impact so far">
-          <div className="container stats__grid">
-            {STATS.map((s) => (
-              <div className="stat" key={s.label}>
-                <strong>{s.value}</strong>
-                <span>{s.label}</span>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -208,8 +210,29 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Hospitals + call to action */}
-        <section className="cta" id="hospitals">
+        {/* For hospitals */}
+        <section className="section section--tint" id="hospitals">
+          <div className="container">
+            <p className="eyebrow">For hospitals</p>
+            <h2>Reach the right donors, fast.</h2>
+            <div className="steps">
+              {HOSPITAL_STEPS.map((step) => (
+                <article className="step" key={step.n}>
+                  <span className="step__num">{step.n}</span>
+                  <h3>{step.title}</h3>
+                  <p>{step.text}</p>
+                </article>
+              ))}
+            </div>
+            <div className="hero__buttons">
+              <a href="/register" className="btn btn--primary">Register your hospital</a>
+              <a href="/login" className="btn btn--outline">Hospital login</a>
+            </div>
+          </div>
+        </section>
+
+        {/* Call to action */}
+        <section className="cta">
           <div className="container cta__inner">
             <div>
               <h2>Someone's tomorrow could start with you.</h2>
@@ -231,7 +254,6 @@ export default function LandingPage() {
             <p className="footer__tag">Connecting people. Supporting lives.</p>
           </div>
           <div className="footer__contact">
-            <p>Contact: <a href="mailto:hello@blooddonorfinder.org">hello@blooddonorfinder.org</a></p>
             <p><a href="/privacy">Privacy policy</a> <a href="/terms">Terms of use</a></p>
           </div>
         </div>

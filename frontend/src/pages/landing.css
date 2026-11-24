@@ -25,11 +25,9 @@
 .landing h1, .landing h2, .landing h3, .landing p { margin: 0; }
 .landing small { display: block; color: var(--muted); font-size: 0.8rem; }
 
-.landing a:focus-visible,
-.landing .btn:focus-visible {
-  outline: 3px solid var(--red);
-  outline-offset: 3px;
-}
+.landing a.btn--primary { color: #fff; }
+.landing a.btn--outline { color: var(--ink); }
+.landing a.btn--light { color: var(--red); }
 
 .container { width: min(1120px, 100% - 40px); margin-inline: auto; }
 

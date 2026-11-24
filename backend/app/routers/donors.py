@@ -1,12 +1,14 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, model_validator
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Donor, User
+from ..expiry import expire_old_requests
+from ..models import BloodRequest, Donor, Hospital, RequestResponse, User
 from ..schemas import BLOOD_GROUPS, PHONE_RE, age_on
 from ..security import require_role
 
@@ -53,6 +55,37 @@ class AvailabilityUpdate(BaseModel):
     is_available: bool
 
 
+class IncomingOut(BaseModel):
+    id: int  # the blood request id
+    hospital: str
+    city: str
+    address: Optional[str] = None
+    blood_group: str
+    units_needed: int
+    units_fulfilled: int
+    urgency: str
+    required_by: Optional[datetime] = None
+    note: Optional[str] = None
+    notified_at: Optional[datetime] = None
+    status: str  # new | accepted | declined
+
+
+class RespondIn(BaseModel):
+    response: Literal["Accepted", "Declined"]
+
+
+class DonationOut(BaseModel):
+    id: int
+    donated_at: Optional[datetime] = None
+    hospital: str
+    city: str
+    blood_group: str
+    volume: int = 450
+
+
+STATUS_MAP = {"Notified": "new", "Accepted": "accepted", "Donated": "accepted", "Declined": "declined"}
+
+
 def get_donor(db: Session, user: User) -> Donor:
     donor = db.query(Donor).filter(Donor.user_id == user.id).first()
     if donor is None:
@@ -71,6 +104,38 @@ def build(user: User, donor: Donor) -> DonorOut:
         phone=donor.phone,
         last_donation_date=donor.last_donation_date,
         is_available=bool(donor.is_available),
+    )
+
+
+def incoming_out(resp: RequestResponse, req: BloodRequest, hosp: Hospital) -> IncomingOut:
+    return IncomingOut(
+        id=req.id,
+        hospital=hosp.hospital_name,
+        city=req.city,
+        address=hosp.address,
+        blood_group=req.blood_group,
+        units_needed=req.units_needed,
+        units_fulfilled=req.units_fulfilled or 0,
+        urgency=req.urgency or "Normal",
+        required_by=req.required_by,
+        note=req.note,
+        notified_at=resp.notified_at,
+        status=STATUS_MAP.get(resp.status, "new"),
+    )
+
+
+def incoming_query(db: Session, donor: Donor):
+    expire_old_requests(db)
+    return (
+        db.query(RequestResponse, BloodRequest, Hospital)
+        .join(BloodRequest, BloodRequest.id == RequestResponse.request_id)
+        .join(Hospital, Hospital.id == BloodRequest.hospital_id)
+        .filter(
+            RequestResponse.donor_id == donor.id,
+            BloodRequest.status != "Cancelled",
+            # hide expired requests the donor never answered
+            or_(BloodRequest.status != "Expired", RequestResponse.status != "Notified"),
+        )
     )
 
 
@@ -114,3 +179,56 @@ def set_availability(
     donor.is_available = data.is_available
     db.commit()
     return build(user, donor)
+
+
+@router.get("/me/requests", response_model=list[IncomingOut])
+def my_requests(user: User = Depends(require_role("donor")), db: Session = Depends(get_db)):
+    donor = get_donor(db, user)
+    rows = incoming_query(db, donor).order_by(RequestResponse.notified_at.desc()).all()
+    return [incoming_out(*row) for row in rows]
+
+
+@router.post("/me/requests/{request_id}/respond", response_model=IncomingOut)
+def respond_to_request(
+    request_id: int,
+    data: RespondIn,
+    user: User = Depends(require_role("donor")),
+    db: Session = Depends(get_db),
+):
+    donor = get_donor(db, user)
+    row = incoming_query(db, donor).filter(RequestResponse.request_id == request_id).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found.")
+    resp, req, hosp = row
+    if req.status != "Open":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This request is no longer open.")
+    if resp.status == "Donated":
+        raise HTTPException(status.HTTP_409_CONFLICT, "You have already donated for this request.")
+    resp.status = data.response
+    resp.responded_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(resp)
+    return incoming_out(resp, req, hosp)
+
+
+@router.get("/me/donations", response_model=list[DonationOut])
+def my_donations(user: User = Depends(require_role("donor")), db: Session = Depends(get_db)):
+    donor = get_donor(db, user)
+    rows = (
+        db.query(RequestResponse, BloodRequest, Hospital)
+        .join(BloodRequest, BloodRequest.id == RequestResponse.request_id)
+        .join(Hospital, Hospital.id == BloodRequest.hospital_id)
+        .filter(RequestResponse.donor_id == donor.id, RequestResponse.status == "Donated")
+        .order_by(RequestResponse.responded_at.desc())
+        .all()
+    )
+    return [
+        DonationOut(
+            id=resp.id,
+            donated_at=resp.responded_at,
+            hospital=hosp.hospital_name,
+            city=hosp.city,
+            blood_group=req.blood_group,
+        )
+        for resp, req, hosp in rows
+    ]

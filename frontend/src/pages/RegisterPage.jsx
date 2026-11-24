@@ -225,12 +225,7 @@ export default function RegisterPage() {
           <p>Every donation begins with someone choosing to make a difference.</p>
         </div>
 
-        <div className="register__stat">
-          <strong>8,650+</strong>
-          <span>donations. Countless new tomorrows.</span>
-          <small>Be part of a community that cares.</small>
-        </div>
-
+    
         <p className="register__privacy">
           <LockIcon /> Your information stays private and secure.
         </p>

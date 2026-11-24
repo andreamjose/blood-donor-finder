@@ -1,0 +1,51 @@
+/* The hospital pages reuse the donor workspace styles (../donor/donor.css).
+   Only the extra pieces they need are added here. */
+
+/* Links that look like buttons (donor.css sets `.dl a { color: inherit }`) */
+.dl a.btn--primary { color: #fff; }
+.dl a.btn--ghost { color: var(--ink); }
+
+/* Notices above the page content */
+.hl__pending { display: flex; margin-bottom: 1.25rem; }
+
+/* Critical is the most urgent level */
+.priority--critical { background: var(--red); color: #fff; }
+
+/* Request status badges (Fulfilled reuses .status--ok) */
+.status--open, .status--closed { display: inline-block; padding: 0.2rem 0.7rem; border-radius: 6px; font-size: 0.72rem; font-weight: 600; }
+.status--open { background: #fdf3e3; color: #b45309; }
+.status--closed { background: #ececf0; color: #57534e; }
+
+/* Create request form */
+.pf__field--wide { grid-column: 1 / -1; }
+.pf__field textarea { width: 100%; min-height: 90px; padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-family: inherit; font-size: 0.8rem; color: var(--ink); resize: vertical; }
+.pf__field textarea:focus { border-color: var(--red); }
+.pf__field label.pf__check { display: flex; align-items: center; gap: 0.6rem; min-height: 40px; margin: 0; font-size: 0.78rem; color: var(--ink); }
+.pf__field .pf__check input { width: 16px; height: 16px; padding: 0; }
+.pf__error { margin-top: 1rem; font-size: 0.75rem; }
+
+.table small { margin-top: 0.1rem; }
+
+.rq-card { padding: 24px; max-width: 760px; }
+.rq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+.rq-field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; }
+.rq-field input,
+.rq-field select,
+.rq-field textarea {
+  padding: 11px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 400;
+  background: #fff;
+}
+.rq-field input:focus,
+.rq-field select:focus,
+.rq-field textarea:focus { outline: 2px solid #a31621; outline-offset: -1px; }
+.rq-field small { font-weight: 400; color: #777; align-self: flex-end; }
+.rq-check { display: flex; align-items: center; gap: 8px; font-size: 14px; align-self: end; padding-bottom: 10px; }
+.rq-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+@media (max-width: 640px) { .rq-grid { grid-template-columns: 1fr; } }
+.rq-row-actions { display: flex; gap: 8px; }
+.rq-donor { display: flex; justify-content: space-between; align-items: center; padding: 10px 4px; border-bottom: 1px solid #eee; }
+.rq-donor:last-child { border-bottom: 0; }
