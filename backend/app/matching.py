@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .mailer import send_request_alert
 from .models import BloodRequest, Donor, Hospital, RequestResponse, User
+from .security import create_respond_token
 
 log = logging.getLogger(__name__)
 
@@ -77,13 +78,19 @@ def notify_donors(db: Session, req: BloodRequest) -> int:
     Returns the number of donors notified."""
     donors = find_eligible_donors(db, req)
     now = datetime.now(timezone.utc)
+
+    responses = []
     for donor in donors:
-        db.add(RequestResponse(
+        response = RequestResponse(
             request_id=req.id,
             donor_id=donor.id,
             status="Notified",
             notified_at=now,
-        ))
+        )
+        db.add(response)
+        responses.append((donor, response))
+    db.flush()  # gives every new row its id, which the email links need
+    response_ids = {donor.user_id: response.id for donor, response in responses}
     db.commit()
 
     if donors:
@@ -94,12 +101,17 @@ def notify_donors(db: Session, req: BloodRequest) -> int:
         base_url = (settings.frontend_url or "http://localhost:5173").rstrip("/")
         link = f"{base_url}/donor/requests"
         needed_by = _format_needed_by(req.required_by)
+        required_by = req.required_by
 
         user_ids = [d.user_id for d in donors[:MAX_EMAIL_ALERTS]]
         users = db.query(User).filter(User.id.in_(user_ids)).all()
 
-        alerts = [
-            {
+        alerts = []
+        for u in users:
+            # a personal, signed link for this donor's answer (see routers/respond.py)
+            token = create_respond_token(response_ids[u.id], required_by)
+            respond_url = f"{base_url}/respond?token={token}"
+            alerts.append({
                 "to": u.email,
                 "name": u.name,
                 "hospital_name": hospital_name,
@@ -109,9 +121,9 @@ def notify_donors(db: Session, req: BloodRequest) -> int:
                 "urgency": req.urgency,
                 "needed_by": needed_by,
                 "link": link,
-            }
-            for u in users
-        ]
+                "accept_link": f"{respond_url}&action=accept",
+                "decline_link": f"{respond_url}&action=decline",
+            })
         threading.Thread(target=_send_alerts, args=(alerts,), daemon=True).start()
 
     return len(donors)
