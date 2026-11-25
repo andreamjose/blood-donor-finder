@@ -31,11 +31,11 @@ function validate(f) {
 }
 
 export default function MyProfile() {
-  const { donor, setDonor, available, setAvailable } = useOutletContext();
+  const {
+    donor, setDonor, available, setAvailable, emailNotifications, setEmailNotifications,
+  } = useOutletContext();
   const [form, setForm] = useState(donor);
   const [errors, setErrors] = useState({});
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [smsAlerts, setSmsAlerts] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -156,12 +156,8 @@ export default function MyProfile() {
               <Toggle checked={available} onChange={setAvailable} label="Available to donate" />
             </div>
             <div className="prefs__row">
-              <span><strong>Email notifications</strong><small>Request updates in your inbox</small></span>
-              <Toggle checked={emailAlerts} onChange={setEmailAlerts} label="Email notifications" />
-            </div>
-            <div className="prefs__row">
-              <span><strong>SMS notifications</strong><small>Time-sensitive requests on your phone</small></span>
-              <Toggle checked={smsAlerts} onChange={setSmsAlerts} label="SMS notifications" />
+              <span><strong>Email notifications</strong><small>Request and camp alerts in your inbox</small></span>
+              <Toggle checked={emailNotifications} onChange={setEmailNotifications} label="Email notifications" />
             </div>
           </section>
         </div>

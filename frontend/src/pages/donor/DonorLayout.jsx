@@ -4,7 +4,7 @@ import { clearSession } from "../../api/auth";
 import { NotificationBell, UserMenu } from "../../components/Menus";
 import { useSupportUnread } from "../supportApi";
 import { Icon } from "./components";
-import { useNewCamps } from "./campsApi"
+import { useNewCamps } from "./campsApi";
 import {
   errorMessage,
   fetchDonations,
@@ -12,6 +12,7 @@ import {
   fetchIncomingRequests,
   respondToRequest,
   updateAvailability,
+  updateEmailNotifications,
 } from "./donorApi";
 import "./donor.css";
 
@@ -51,6 +52,7 @@ export default function DonorLayout() {
 
   const [donor, setDonor] = useState(null);
   const [available, setAvailableState] = useState(true);
+  const [emailNotifications, setEmailNotificationsState] = useState(true);
   const [status, setStatus] = useState("loading"); // loading | ready | error
   const [attempt, setAttempt] = useState(0);
 
@@ -61,10 +63,11 @@ export default function DonorLayout() {
   useEffect(() => {
     let cancelled = false;
     fetchDonor()
-      .then(({ donor, available }) => {
+      .then(({ donor, available, emailNotifications }) => {
         if (cancelled) return;
         setDonor(donor);
         setAvailableState(available);
+        setEmailNotificationsState(emailNotifications);
         setStatus("ready");
       })
       .catch((err) => {
@@ -106,6 +109,16 @@ export default function DonorLayout() {
       await updateAvailability(value);
     } catch {
       setAvailableState(previous);
+    }
+  }
+
+  async function setEmailNotifications(value) {
+    const previous = emailNotifications;
+    setEmailNotificationsState(value);
+    try {
+      await updateEmailNotifications(value);
+    } catch {
+      setEmailNotificationsState(previous);
     }
   }
 
@@ -226,7 +239,12 @@ export default function DonorLayout() {
         </header>
 
         <main className="dl__content">
-          <Outlet context={{ donor, setDonor, requests, respond, available, setAvailable, query, donations }} />
+          <Outlet
+            context={{
+              donor, setDonor, requests, respond, available, setAvailable,
+              emailNotifications, setEmailNotifications, query, donations,
+            }}
+          />
         </main>
       </div>
     </div>

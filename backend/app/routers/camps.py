@@ -177,9 +177,12 @@ def create_camp(
     db.commit()
     db.refresh(camp)
 
+    # Every eligible donor sees the camp in the app; only those with email alerts on get an email
     recipients = eligible_donors(db, camp)
     link = f"{settings.frontend_url.rstrip('/')}/donor/camps"
-    for _, u in recipients:
+    for d, u in recipients:
+        if d.email_notifications is False:
+            continue
         background.add_task(
             send_camp_announcement, u.email, u.name, hospital.hospital_name,
             camp.title, camp.venue, when_text(camp), link,
@@ -263,6 +266,7 @@ def cancel_camp(
         .all()
     )
     db.commit()
+    # Sent to everyone who booked, whatever their alert setting: it changes a booking they made
     for u in bookers:
         background.add_task(send_camp_cancelled, u.email, u.name, hospital.hospital_name, camp.title, when_text(camp))
     counts = booked_counts(db, [camp.id])
@@ -348,9 +352,9 @@ def cancel_booking(
     booking.status = "Cancelled"
     db.commit()
 
-    if was_full:  # a slot just opened: alert eligible donors who have not booked
+    if was_full:  # a slot just opened: alert eligible donors who have not booked (and have email alerts on)
         link = f"{settings.frontend_url.rstrip('/')}/donor/camps"
-        for _, u in eligible_donors(db, camp, skip_booked=True):
-            if u.id != user.id:
+        for d, u in eligible_donors(db, camp, skip_booked=True):
+            if u.id != user.id and d.email_notifications is not False:
                 background.add_task(send_camp_slot_open, u.email, u.name, hosp.hospital_name, camp.title, when_text(camp), link)
     return camp_out(camp, hosp.hospital_name, taken - 1, my_status="Cancelled")

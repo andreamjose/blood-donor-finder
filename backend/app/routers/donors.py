@@ -27,6 +27,7 @@ class DonorOut(BaseModel):
     phone: Optional[str] = None
     last_donation_date: Optional[date] = None
     is_available: bool
+    email_notifications: bool = True
 
 
 class DonorUpdate(BaseModel):
@@ -58,6 +59,10 @@ class AvailabilityUpdate(BaseModel):
     is_available: bool
 
 
+class NotificationsUpdate(BaseModel):
+    email_notifications: bool
+
+
 class IncomingOut(BaseModel):
     id: int  # the blood request id
     hospital: str
@@ -72,7 +77,7 @@ class IncomingOut(BaseModel):
     required_by: Optional[datetime] = None
     note: Optional[str] = None
     notified_at: Optional[datetime] = None
-    status: str  # new | accepted | declined
+    status: str  # new | accepted | declined | released
 
 
 class RespondIn(BaseModel):
@@ -88,7 +93,14 @@ class DonationOut(BaseModel):
     volume: int = 450
 
 
-STATUS_MAP = {"Notified": "new", "Accepted": "accepted", "Donated": "accepted", "Declined": "declined","NoShow": "released","Unsuitable": "released",}
+STATUS_MAP = {
+    "Notified": "new",
+    "Accepted": "accepted",
+    "Donated": "accepted",
+    "Declined": "declined",
+    "NoShow": "released",
+    "Unsuitable": "released",
+}
 
 
 def get_donor(db: Session, user: User) -> Donor:
@@ -110,6 +122,7 @@ def build(user: User, donor: Donor) -> DonorOut:
         phone=donor.phone,
         last_donation_date=donor.last_donation_date,
         is_available=bool(donor.is_available),
+        email_notifications=donor.email_notifications is not False,
     )
 
 
@@ -225,6 +238,20 @@ def set_availability(
     return build(user, donor)
 
 
+@router.patch("/me/notifications", response_model=DonorOut)
+def set_notifications(
+    data: NotificationsUpdate,
+    user: User = Depends(require_role("donor")),
+    db: Session = Depends(get_db),
+):
+    """Turn alert emails (new requests, slot openings, camps) on or off.
+    Requests and camps still appear in the app either way."""
+    donor = get_donor(db, user)
+    donor.email_notifications = data.email_notifications
+    db.commit()
+    return build(user, donor)
+
+
 @router.get("/me/requests", response_model=list[IncomingOut])
 def my_requests(user: User = Depends(require_role("donor")), db: Session = Depends(get_db)):
     donor = get_donor(db, user)
@@ -276,7 +303,6 @@ def respond_to_request(
     return incoming_out(resp, req, hosp, donor, counts.get(req.id, 0))
 
 
-@router.get("/me/donations", response_model=list[DonationOut])
 @router.get("/me/donations", response_model=list[DonationOut])
 def my_donations(user: User = Depends(require_role("donor")), db: Session = Depends(get_db)):
     donor = get_donor(db, user)

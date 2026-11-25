@@ -28,7 +28,11 @@ const toApi = (f) => ({
 
 export async function fetchDonor() {
   const { data } = await api.get("/donors/me");
-  return { donor: fromApi(data), available: data.is_available };
+  return {
+    donor: fromApi(data),
+    available: data.is_available,
+    emailNotifications: data.email_notifications !== false,
+  };
 }
 
 export async function saveDonor(form) {
@@ -38,6 +42,10 @@ export async function saveDonor(form) {
 
 export async function updateAvailability(value) {
   await api.patch("/donors/me/availability", { is_available: value });
+}
+
+export async function updateEmailNotifications(value) {
+  await api.patch("/donors/me/notifications", { email_notifications: value });
 }
 
 // Turn a failed request into a short message for the user

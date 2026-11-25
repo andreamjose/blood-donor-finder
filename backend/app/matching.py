@@ -86,7 +86,8 @@ def _send_alerts(alerts: list[dict]) -> None:
 
 def notify_donors(db: Session, req: BloodRequest) -> int:
     """Create a 'Notified' response row for every eligible donor within the radius,
-    then email them. Returns the number of donors notified."""
+    then email those who have email notifications on. Every notified donor still sees
+    the request in the app. Returns the number of donors notified."""
     donors = find_eligible_donors(db, req)
     now = datetime.now(timezone.utc)
 
@@ -104,7 +105,10 @@ def notify_donors(db: Session, req: BloodRequest) -> int:
     response_ids = {donor.user_id: response.id for donor, response in responses}
     db.commit()
 
-    if donors:
+    # Only donors who left "Email notifications" on get an email
+    emailable = [d for d in donors if d.email_notifications is not False][:MAX_EMAIL_ALERTS]
+
+    if emailable:
         # Collect plain values now. The database session closes after the request,
         # so the background thread must not touch database objects.
         hospital = db.query(Hospital).filter(Hospital.id == req.hospital_id).first()
@@ -114,7 +118,7 @@ def notify_donors(db: Session, req: BloodRequest) -> int:
         needed_by = _format_needed_by(req.required_by)
         required_by = req.required_by
 
-        user_ids = [d.user_id for d in donors[:MAX_EMAIL_ALERTS]]
+        user_ids = [d.user_id for d in emailable]
         users = db.query(User).filter(User.id.in_(user_ids)).all()
 
         alerts = []

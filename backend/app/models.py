@@ -35,6 +35,7 @@ class Donor(Base):
     gender = Column(String)
     last_donation_date = Column(Date)
     is_available = Column(Boolean, default=True)
+    email_notifications = Column(Boolean, default=True)  # alert emails (requests, camps)
 
 
 class Hospital(Base):
@@ -101,6 +102,7 @@ class SupportMessage(Base):
     sender = Column(String, nullable=False)  # user | admin
     body = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), default=func.now())
+
 
 class Camp(Base):
     __tablename__ = "camps"
