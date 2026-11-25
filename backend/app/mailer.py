@@ -2,6 +2,7 @@
 import logging
 import smtplib
 from email.message import EmailMessage
+from html import escape
 from typing import Optional
 
 from .config import settings
@@ -74,6 +75,7 @@ def send_password_reset(to: str, name: str, link: str) -> bool:
     return send_email(to, "Reset your Blood Donor Finder password", text, html)
 
 
+<<<<<<< HEAD
 def send_support_message(
     ticket_id: int,
     name: str,
@@ -151,3 +153,53 @@ def send_camp_cancelled(to: str, name: str, hospital: str, title: str, when: str
         f"Your booking has been released. Thank you for offering to help.\n"
     )
     return send_email(to, f"Camp cancelled: {title}", text)
+=======
+def send_request_alert(
+    to: str,
+    name: str,
+    hospital_name: str,
+    blood_group: str,
+    units: int,
+    city: str,
+    urgency: str,
+    needed_by: str,
+    link: str,
+) -> bool:
+    """Tell a matching donor that a hospital needs blood.
+
+    Privacy: the hospital's phone number is NOT included. The app only shares
+    it after the donor accepts.
+    """
+    units_text = f"{units} unit" + ("" if units == 1 else "s")
+    place = " ".join(str(city).split())
+    if urgency in ("Urgent", "Critical"):
+        subject = f"{urgency}: {blood_group} blood needed in {place}"
+    else:
+        subject = f"{blood_group} blood needed in {place}"
+
+    text = (
+        f"Hi {name},\n\n"
+        f"{hospital_name} in {place} needs {units_text} of {blood_group} blood "
+        f"(urgency: {urgency}).\n"
+        f"Needed by: {needed_by}\n\n"
+        f"You are receiving this because your blood group and city match this request.\n"
+        f"Log in to accept or decline:\n{link}\n\n"
+        f"Please accept only if you are able to donate. The hospital's medical team "
+        f"confirms your eligibility before any donation."
+    )
+
+    html = (
+        f"<p>Hi {escape(name)},</p>"
+        f"<p><strong>{escape(hospital_name)}</strong> in {escape(place)} needs "
+        f"<strong>{escape(units_text)} of {escape(blood_group)}</strong> blood "
+        f"(urgency: {escape(urgency)}).</p>"
+        f"<p>Needed by: {escape(needed_by)}</p>"
+        f"<p>You are receiving this because your blood group and city match this request.</p>"
+        f"<p><a href=\"{escape(link)}\" style=\"display:inline-block;padding:10px 18px;"
+        f"background:#b91c1c;color:#fff;border-radius:8px;text-decoration:none;"
+        f"font-weight:600\">View request</a></p>"
+        f"<p style=\"color:#555;font-size:13px\">Please accept only if you are able to donate. "
+        f"The hospital's medical team confirms your eligibility before any donation.</p>"
+    )
+    return send_email(to, subject, text, html)
+>>>>>>> origin/main
