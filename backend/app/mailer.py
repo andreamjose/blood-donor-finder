@@ -75,7 +75,6 @@ def send_password_reset(to: str, name: str, link: str) -> bool:
     return send_email(to, "Reset your Blood Donor Finder password", text, html)
 
 
-<<<<<<< HEAD
 def send_support_message(
     ticket_id: int,
     name: str,
@@ -153,7 +152,6 @@ def send_camp_cancelled(to: str, name: str, hospital: str, title: str, when: str
         f"Your booking has been released. Thank you for offering to help.\n"
     )
     return send_email(to, f"Camp cancelled: {title}", text)
-=======
 def send_request_alert(
     to: str,
     name: str,
@@ -202,4 +200,3 @@ def send_request_alert(
         f"The hospital's medical team confirms your eligibility before any donation.</p>"
     )
     return send_email(to, subject, text, html)
->>>>>>> origin/main

@@ -5,25 +5,19 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-<<<<<<< HEAD
-from .geo import ensure_hospital_location, haversine_km
-from .models import BloodRequest, Donor, Hospital, RequestResponse, User
-
-DONATION_GAP_DAYS = 90
-RADIUS_KM = 5
-=======
 from .config import settings
+from .geo import ensure_hospital_location, haversine_km
 from .mailer import send_request_alert
 from .models import BloodRequest, Donor, Hospital, RequestResponse, User
 
 log = logging.getLogger(__name__)
 
 DONATION_GAP_DAYS = 90
+RADIUS_KM = 5
 MAX_EMAIL_ALERTS = 50  # safety cap: never email more than this many donors per request
 
 # Indian Standard Time, as a fixed offset (no extra tz database needed on Windows)
 IST = timezone(timedelta(hours=5, minutes=30))
->>>>>>> origin/main
 
 # patient blood group -> donor groups that can give to them
 CAN_RECEIVE_FROM = {
@@ -90,12 +84,8 @@ def _send_alerts(alerts: list[dict]) -> None:
 
 
 def notify_donors(db: Session, req: BloodRequest) -> int:
-<<<<<<< HEAD
-    """Create a 'Notified' response row for every eligible donor within the radius."""
-=======
-    """Create a 'Notified' response row for every eligible donor, then email them.
-    Returns the number of donors notified."""
->>>>>>> origin/main
+    """Create a 'Notified' response row for every eligible donor within the radius,
+    then email them. Returns the number of donors notified."""
     donors = find_eligible_donors(db, req)
     now = datetime.now(timezone.utc)
     for donor in donors:
