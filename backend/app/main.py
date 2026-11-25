@@ -1,4 +1,5 @@
 from .routers import admin, auth, blood_requests, camps, donors, hospitals, support
+from .routers import admin, auth, blood_requests, donors, hospitals, respond
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -23,6 +24,9 @@ app.include_router(admin.router)
 app.include_router(support.router)
 app.include_router(camps.router)
 app.include_router(camps.donor_router)
+app.include_router(respond.router)
+
+
 @app.get("/health")
 def health(db: Session = Depends(get_db)):
     db.execute(text("SELECT 1"))

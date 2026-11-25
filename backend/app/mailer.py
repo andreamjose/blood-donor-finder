@@ -6,7 +6,6 @@ from html import escape
 from typing import Optional
 
 from .config import settings
-
 log = logging.getLogger(__name__)
 
 
@@ -162,14 +161,21 @@ def send_request_alert(
     urgency: str,
     needed_by: str,
     link: str,
+    accept_link: Optional[str] = None,
+    decline_link: Optional[str] = None,
 ) -> bool:
     """Tell a matching donor that a hospital needs blood.
+
+    accept_link / decline_link are personal, signed links that open the public
+    /respond page (no login). Opening a link changes nothing: the donor confirms
+    on that page.
 
     Privacy: the hospital's phone number is NOT included. The app only shares
     it after the donor accepts.
     """
     units_text = f"{units} unit" + ("" if units == 1 else "s")
     place = " ".join(str(city).split())
+    one_click = bool(accept_link and decline_link)
     if urgency in ("Urgent", "Critical"):
         subject = f"{urgency}: {blood_group} blood needed in {place}"
     else:
@@ -180,11 +186,42 @@ def send_request_alert(
         f"{hospital_name} in {place} needs {units_text} of {blood_group} blood "
         f"(urgency: {urgency}).\n"
         f"Needed by: {needed_by}\n\n"
-        f"You are receiving this because your blood group and city match this request.\n"
-        f"Log in to accept or decline:\n{link}\n\n"
+        f"You are receiving this because your blood group and city match this request.\n\n"
+    )
+    if one_click:
+        text += (
+            f"Can you help? You will see the request and confirm on the next page.\n"
+            f"Accept:  {accept_link}\n"
+            f"Decline: {decline_link}\n\n"
+            f"These links are personal to you, so please do not forward this email.\n"
+            f"Or log in to see all your requests: {link}\n\n"
+        )
+    else:
+        text += f"Log in to accept or decline:\n{link}\n\n"
+    text += (
         f"Please accept only if you are able to donate. The hospital's medical team "
         f"confirms your eligibility before any donation."
     )
+
+    if one_click:
+        buttons = (
+            f"<p>Can you help? You will see the request and confirm on the next page.</p>"
+            f"<p><a href=\"{escape(accept_link)}\" style=\"display:inline-block;padding:10px 18px;"
+            f"background:#b91c1c;color:#fff;border-radius:8px;text-decoration:none;"
+            f"font-weight:600\">Accept</a>"
+            f"<a href=\"{escape(decline_link)}\" style=\"display:inline-block;padding:10px 18px;"
+            f"margin-left:8px;border:1px solid #b91c1c;color:#b91c1c;border-radius:8px;"
+            f"text-decoration:none;font-weight:600\">Decline</a></p>"
+            f"<p style=\"color:#555;font-size:13px\">These buttons are personal to you, so please do "
+            f"not forward this email. Or <a href=\"{escape(link)}\">log in to see all your "
+            f"requests</a>.</p>"
+        )
+    else:
+        buttons = (
+            f"<p><a href=\"{escape(link)}\" style=\"display:inline-block;padding:10px 18px;"
+            f"background:#b91c1c;color:#fff;border-radius:8px;text-decoration:none;"
+            f"font-weight:600\">View request</a></p>"
+        )
 
     html = (
         f"<p>Hi {escape(name)},</p>"
@@ -193,9 +230,7 @@ def send_request_alert(
         f"(urgency: {escape(urgency)}).</p>"
         f"<p>Needed by: {escape(needed_by)}</p>"
         f"<p>You are receiving this because your blood group and city match this request.</p>"
-        f"<p><a href=\"{escape(link)}\" style=\"display:inline-block;padding:10px 18px;"
-        f"background:#b91c1c;color:#fff;border-radius:8px;text-decoration:none;"
-        f"font-weight:600\">View request</a></p>"
+        f"{buttons}"
         f"<p style=\"color:#555;font-size:13px\">Please accept only if you are able to donate. "
         f"The hospital's medical team confirms your eligibility before any donation.</p>"
     )

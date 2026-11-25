@@ -1,0 +1,126 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+.respond {
+  --red: #b91c1c;
+  --red-dark: #991b1b;
+  --ink: #1c1917;
+  --muted: #6b6560;
+  --line: #e0dedc;
+  --tint: #f7f7f8;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--tint);
+}
+
+.respond *, .respond *::before, .respond *::after { box-sizing: border-box; }
+.respond a { color: inherit; text-decoration: none; }
+.respond h1, .respond p { margin: 0; }
+
+.respond a:focus-visible,
+.respond button:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
+}
+
+/* Top bar */
+.respond__bar {
+  display: flex;
+  align-items: center;
+  padding: 0.9rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.respond__brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 600; font-size: 0.95rem; }
+.respond__logo {
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border-radius: 8px; background: var(--red); color: #fff;
+}
+
+/* Card */
+.respond__main { flex: 1; display: grid; place-items: start center; padding: 2rem 1.25rem 3rem; }
+.respond__card {
+  width: min(100%, 460px);
+  padding: 1.75rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.respond__eyebrow {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em;
+  text-transform: uppercase; color: var(--red);
+}
+.respond h1 { margin-top: 0.6rem; font-size: 1.9rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+.respond__sub { margin-top: 0.6rem; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+
+/* Blood group highlight */
+.respond__hero {
+  display: flex; align-items: center; gap: 1rem;
+  margin-top: 1.5rem; padding: 1rem 1.1rem;
+  border-radius: 8px; background: var(--tint);
+}
+.respond__group { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--red); }
+.respond__units { font-size: 0.95rem; font-weight: 700; }
+.respond__when { margin-top: 0.2rem; font-size: 0.78rem; color: var(--muted); }
+
+.respond__pill {
+  margin-left: auto; padding: 0.25rem 0.65rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+}
+.respond__pill--critical { background: #fee2e2; color: var(--red-dark); }
+.respond__pill--urgent { background: #fdeede; color: #b45309; }
+.respond__pill--normal { background: #ececec; color: #4b4642; }
+
+/* Details */
+.respond__rows { margin-top: 0.75rem; }
+.respond__row {
+  display: flex; justify-content: space-between; gap: 1rem;
+  padding: 0.7rem 0; border-bottom: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+.respond__row:last-child { border-bottom: 0; }
+.respond__label { color: var(--muted); }
+.respond__value { font-weight: 600; text-align: right; }
+
+.respond__help { margin-top: 1.25rem; font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
+/* Buttons */
+.respond__buttons { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+.respond__btn {
+  flex: 1; height: 46px; border-radius: 8px;
+  font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  transition: background-color 0.15s;
+}
+.respond__btn--primary { border: 0; background: var(--red); color: #fff; }
+.respond__btn--primary:hover { background: var(--red-dark); }
+.respond__btn--ghost { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+.respond__btn--ghost:hover { background: var(--tint); }
+.respond__btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+/* Messages */
+.respond__notice {
+  display: flex; align-items: flex-start; gap: 0.7rem;
+  margin-top: 1.25rem; padding: 0.9rem 1rem; border-radius: 8px;
+  font-size: 0.85rem; line-height: 1.5;
+}
+.respond__notice--ok { background: #e8f5ec; color: #166534; }
+.respond__notice--declined { background: var(--tint); color: var(--ink); }
+.respond__notice--warn { background: #fef2f2; color: var(--red-dark); }
+
+.respond__error {
+  margin-top: 1rem; padding: 0.6rem 0.8rem; border-radius: 8px;
+  background: #fef2f2; color: var(--red-dark); font-size: 0.8rem;
+}
+
+.respond__loading { margin-top: 0.5rem; font-size: 0.85rem; color: var(--muted); }
+.respond__footer { margin-top: 1.5rem; font-size: 0.78rem; }
+.respond__link { font-weight: 600; color: var(--red); }
+.respond__link:hover { text-decoration: underline; }
+
+@media (prefers-reduced-motion: reduce) {
+  .respond * { transition: none !important; }
+}
