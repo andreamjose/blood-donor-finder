@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import { ForgotPasswordPage, ResetPasswordPage } from "./pages/PasswordPages";
 import { GuidelinesPage, PrivacyPage, TermsPage } from "./pages/InfoPages";
+import RespondPage from "./pages/RespondPage";
 import DonorLayout from "./pages/donor/DonorLayout";
 import DonorDashboard from "./pages/donor/DonorDashboard";
 import IncomingRequests from "./pages/donor/IncomingRequests";
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/guidelines" element={<GuidelinesPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/respond" element={<RespondPage />} />
 
         <Route path="/donor" element={<ProtectedRoute role="donor"><DonorLayout /></ProtectedRoute>}>
           <Route index element={<DonorDashboard />} />
