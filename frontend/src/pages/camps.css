@@ -1,0 +1,12 @@
+.cp-card { padding: 20px 24px; margin-bottom: 16px; }
+.cp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.cp-head h2 { margin: 0 0 4px; font-size: 18px; }
+.cp-meta { margin: 2px 0; color: #57534e; font-size: 14px; }
+.cp-bar { height: 8px; border-radius: 99px; background: #f1e7e5; margin: 12px 0 4px; overflow: hidden; }
+.cp-bar > span { display: block; height: 100%; background: #b91c1c; }
+.cp-count { font-size: 13px; color: #78716c; }
+.cp-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cp-form { padding: 24px; max-width: 760px; margin-bottom: 20px; }
+.cp-people { margin-top: 12px; border-top: 1px solid #eee; }
+.cp-person { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f3f3f3; gap: 8px; flex-wrap: wrap; }
+.cp-hint { margin: 6px 0 0; font-size: 13px; color: #b45309; }

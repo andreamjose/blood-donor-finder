@@ -1,13 +1,15 @@
 from datetime import date, datetime, timezone
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..database import get_db
 from ..expiry import expire_old_requests
+from ..mailer import send_slot_open
 from ..matching import notify_donors
 from ..models import BloodRequest, Donor, RequestResponse, User
 from ..schemas import BLOOD_GROUPS
@@ -17,6 +19,7 @@ from .hospitals import get_hospital
 router = APIRouter(prefix="/requests", tags=["requests"])
 
 STATUSES = ("Open", "Fulfilled", "Expired", "Cancelled")
+RELEASED = ("NoShow", "Unsuitable")
 
 
 class RequestCreate(BaseModel):
@@ -49,6 +52,10 @@ class RequestCreate(BaseModel):
 
 class StatusUpdate(BaseModel):
     status: Literal["Cancelled"]
+
+
+class ReleaseIn(BaseModel):
+    reason: Literal["no_show", "unsuitable"]
 
 
 class RequestOut(BaseModel):
@@ -232,7 +239,7 @@ def request_donors(
         .join(User, User.id == Donor.user_id)
         .filter(
             RequestResponse.request_id == req.id,
-            RequestResponse.status.in_(["Accepted", "Donated"]),
+            RequestResponse.status.in_(["Accepted", "Donated", *RELEASED]),
         )
         .order_by(RequestResponse.responded_at.desc())
         .all()
@@ -282,6 +289,66 @@ def mark_donated(
         donor.last_donation_date = date.today()
 
     db.commit()
+    db.refresh(req)
+    notified, accepted = response_counts(db, [req.id])
+    return build(req, notified, accepted)
+
+
+@router.post("/{request_id}/donors/{response_id}/release", response_model=RequestOut)
+def release_slot(
+    request_id: int,
+    response_id: int,
+    data: ReleaseIn,
+    background: BackgroundTasks,
+    user: User = Depends(require_role("hospital")),
+    db: Session = Depends(get_db),
+):
+    """The donor did not show up or is not suitable: free the slot and alert the donors still waiting."""
+    expire_old_requests(db)
+    hospital = get_hospital(db, user)
+    req = get_own_request(db, hospital.id, request_id)
+    if req.status != "Open":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This request is no longer open.")
+
+    resp = (
+        db.query(RequestResponse)
+        .filter(RequestResponse.id == response_id, RequestResponse.request_id == req.id)
+        .first()
+    )
+    if resp is None or resp.status != "Accepted":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Only a donor who accepted and has not donated yet can be released.",
+        )
+
+    now = datetime.now(timezone.utc)
+    resp.status = "NoShow" if data.reason == "no_show" else "Unsuitable"
+    resp.responded_at = now
+
+    # Donors who were notified but never answered (they were seeing "Slots full")
+    waiting = (
+        db.query(RequestResponse, User)
+        .join(Donor, Donor.id == RequestResponse.donor_id)
+        .join(User, User.id == Donor.user_id)
+        .filter(
+            RequestResponse.request_id == req.id,
+            RequestResponse.status == "Notified",
+            User.is_active.is_(True),
+        )
+        .all()
+    )
+    for waiting_resp, _ in waiting:
+        waiting_resp.notified_at = now  # moves the request to the top of their list as new
+
+    db.commit()
+
+    link = f"{settings.frontend_url.rstrip('/')}/donor/requests"
+    for _, waiting_user in waiting:
+        background.add_task(
+            send_slot_open, waiting_user.email, waiting_user.name,
+            hospital.hospital_name, req.blood_group, link,
+        )
+
     db.refresh(req)
     notified, accepted = response_counts(db, [req.id])
     return build(req, notified, accepted)

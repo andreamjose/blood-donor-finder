@@ -75,16 +75,79 @@ def send_password_reset(to: str, name: str, link: str) -> bool:
 
 
 def send_support_message(
-    name: str, email: str, role: str, category: str, subject: str, message: str
+    ticket_id: int,
+    name: str,
+    email: str,
+    role: str,
+    category: str,
+    subject: str,
+    message: str,
+    is_reply: bool = False,
 ) -> bool:
-    """Forward a support message to the admin inbox. Replying goes to the sender."""
+    """Tell the admin inbox about a new message. Reply in the admin page so the user sees it in the app."""
     to = settings.support_email or settings.smtp_user or "support@localhost"
+    kind = "New reply" if is_reply else "New support message"
+    link = f"{settings.frontend_url.rstrip('/')}/admin/support"
     text = (
-        f"New support message\n\n"
+        f"{kind} (ticket #{ticket_id})\n\n"
         f"From: {name} ({role})\n"
         f"Email: {email}\n"
         f"Category: {category}\n"
         f"Subject: {subject}\n\n"
-        f"{message}\n"
+        f"{message}\n\n"
+        f"Reply in the admin page so it shows in the user's Support page:\n{link}\n"
     )
     return send_email(to, f"[Support] {category}: {subject}", text, reply_to=email)
+
+
+def send_support_reply(to: str, name: str, subject: str, reply: str, link: str) -> bool:
+    """Tell a user that the team replied."""
+    text = (
+        f"Hi {name},\n\n"
+        f"Our team replied to your message \"{subject}\":\n\n"
+        f"{reply}\n\n"
+        f"You can read the conversation and answer here:\n{link}\n"
+    )
+    return send_email(to, f"Re: {subject}", text)
+
+
+def send_support_resolved(to: str, name: str, subject: str, link: str) -> bool:
+    """Tell a user that their issue was marked as resolved."""
+    text = (
+        f"Hi {name},\n\n"
+        f"We've marked your message \"{subject}\" as resolved.\n"
+        f"If you still need help, just reply and we'll reopen it:\n{link}\n"
+    )
+    return send_email(to, f"Resolved: {subject}", text)
+
+def send_slot_open(to: str, name: str, hospital: str, blood_group: str, link: str) -> bool:
+    """Tell a waiting donor that a slot opened up."""
+    text = (
+        f"Hi {name},\n\n"
+        f"A slot just opened for a {blood_group} blood request from {hospital}.\n"
+        f"Slots are first come, first served, so accept soon if you can help:\n{link}\n"
+    )
+    return send_email(to, f"A slot opened: {blood_group} blood needed at {hospital}", text)
+def send_camp_announcement(to: str, name: str, hospital: str, title: str, venue: str, when: str, link: str) -> bool:
+    text = (
+        f"Hi {name},\n\n{hospital} is holding a blood donation camp near you:\n\n"
+        f"{title}\nWhen: {when}\nWhere: {venue}\n\n"
+        f"Slots are limited and first come, first served. Book yours here:\n{link}\n"
+    )
+    return send_email(to, f"Blood camp near you: {title}", text)
+
+
+def send_camp_slot_open(to: str, name: str, hospital: str, title: str, when: str, link: str) -> bool:
+    text = (
+        f"Hi {name},\n\nA slot just opened at the blood camp \"{title}\" ({hospital}, {when}).\n"
+        f"It is first come, first served, so book soon if you can come:\n{link}\n"
+    )
+    return send_email(to, f"A slot opened: {title}", text)
+
+
+def send_camp_cancelled(to: str, name: str, hospital: str, title: str, when: str) -> bool:
+    text = (
+        f"Hi {name},\n\nWe're sorry: {hospital} has cancelled the blood camp \"{title}\" ({when}).\n"
+        f"Your booking has been released. Thank you for offering to help.\n"
+    )
+    return send_email(to, f"Camp cancelled: {title}", text)

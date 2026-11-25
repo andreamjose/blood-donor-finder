@@ -3,12 +3,13 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, model_validator
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..expiry import expire_old_requests
-from ..models import BloodRequest, Donor, Hospital, RequestResponse, User
+from ..geo import geocode, haversine_km
+from ..models import BloodRequest, Camp, CampBooking, Donor, Hospital, RequestResponse, User
 from ..schemas import BLOOD_GROUPS, PHONE_RE, age_on
 from ..security import require_role
 
@@ -22,6 +23,7 @@ class DonorOut(BaseModel):
     gender: Optional[str] = None
     blood_group: str
     city: str
+    area: Optional[str] = None
     phone: Optional[str] = None
     last_donation_date: Optional[date] = None
     is_available: bool
@@ -34,6 +36,7 @@ class DonorUpdate(BaseModel):
     gender: Literal["Male", "Female", "Other"]
     blood_group: str
     city: str = Field(min_length=2, max_length=100)
+    area: Optional[str] = Field(default=None, max_length=200)
     phone: str
     last_donation_date: Optional[date] = None
 
@@ -63,6 +66,8 @@ class IncomingOut(BaseModel):
     blood_group: str
     units_needed: int
     units_fulfilled: int
+    slots_left: int
+    distance_km: Optional[float] = None
     urgency: str
     required_by: Optional[datetime] = None
     note: Optional[str] = None
@@ -75,7 +80,7 @@ class RespondIn(BaseModel):
 
 
 class DonationOut(BaseModel):
-    id: int
+    id: str
     donated_at: Optional[datetime] = None
     hospital: str
     city: str
@@ -83,7 +88,7 @@ class DonationOut(BaseModel):
     volume: int = 450
 
 
-STATUS_MAP = {"Notified": "new", "Accepted": "accepted", "Donated": "accepted", "Declined": "declined"}
+STATUS_MAP = {"Notified": "new", "Accepted": "accepted", "Donated": "accepted", "Declined": "declined","NoShow": "released","Unsuitable": "released",}
 
 
 def get_donor(db: Session, user: User) -> Donor:
@@ -101,13 +106,34 @@ def build(user: User, donor: Donor) -> DonorOut:
         gender=donor.gender,
         blood_group=donor.blood_group,
         city=donor.city,
+        area=donor.area,
         phone=donor.phone,
         last_donation_date=donor.last_donation_date,
         is_available=bool(donor.is_available),
     )
 
 
-def incoming_out(resp: RequestResponse, req: BloodRequest, hosp: Hospital) -> IncomingOut:
+def taken_counts(db: Session, request_ids: list[int]) -> dict:
+    """How many slots are already taken (accepted or donated) for each request."""
+    if not request_ids:
+        return {}
+    return dict(
+        db.query(RequestResponse.request_id, func.count(RequestResponse.id))
+        .filter(
+            RequestResponse.request_id.in_(request_ids),
+            RequestResponse.status.in_(["Accepted", "Donated"]),
+        )
+        .group_by(RequestResponse.request_id)
+        .all()
+    )
+
+
+def incoming_out(
+    resp: RequestResponse, req: BloodRequest, hosp: Hospital, donor: Donor, taken: int
+) -> IncomingOut:
+    distance = None
+    if None not in (donor.latitude, donor.longitude, hosp.latitude, hosp.longitude):
+        distance = round(haversine_km(donor.latitude, donor.longitude, hosp.latitude, hosp.longitude), 1)
     return IncomingOut(
         id=req.id,
         hospital=hosp.hospital_name,
@@ -116,6 +142,8 @@ def incoming_out(resp: RequestResponse, req: BloodRequest, hosp: Hospital) -> In
         blood_group=req.blood_group,
         units_needed=req.units_needed,
         units_fulfilled=req.units_fulfilled or 0,
+        slots_left=max(0, req.units_needed - taken),
+        distance_km=distance,
         urgency=req.urgency or "Normal",
         required_by=req.required_by,
         note=req.note,
@@ -157,12 +185,28 @@ def update_me(
     if taken:
         raise HTTPException(status.HTTP_409_CONFLICT, "Another account already uses this email.")
 
+    # Work out the donor's coordinates from their area (only when it changed)
+    area = (data.area or "").strip() or None
+    lat, lon = donor.latitude, donor.longitude
+    if not area:
+        lat = lon = None
+    elif area != donor.area or data.city != donor.city or lat is None:
+        point = geocode(f"{area}, {data.city}, India")
+        if point is None:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "We couldn't find that area. Try a nearby landmark or a larger area name.",
+            )
+        lat, lon = point
+
     user.name = data.full_name.strip()
     user.email = email
     donor.dob = data.dob
     donor.gender = data.gender
     donor.blood_group = data.blood_group
     donor.city = data.city
+    donor.area = area
+    donor.latitude, donor.longitude = lat, lon
     donor.phone = data.phone
     donor.last_donation_date = data.last_donation_date
     db.commit()
@@ -185,7 +229,8 @@ def set_availability(
 def my_requests(user: User = Depends(require_role("donor")), db: Session = Depends(get_db)):
     donor = get_donor(db, user)
     rows = incoming_query(db, donor).order_by(RequestResponse.notified_at.desc()).all()
-    return [incoming_out(*row) for row in rows]
+    counts = taken_counts(db, [req.id for _, req, _ in rows])
+    return [incoming_out(resp, req, hosp, donor, counts.get(req.id, 0)) for resp, req, hosp in rows]
 
 
 @router.post("/me/requests/{request_id}/respond", response_model=IncomingOut)
@@ -204,31 +249,65 @@ def respond_to_request(
         raise HTTPException(status.HTTP_409_CONFLICT, "This request is no longer open.")
     if resp.status == "Donated":
         raise HTTPException(status.HTTP_409_CONFLICT, "You have already donated for this request.")
+    if resp.status in ("NoShow", "Unsuitable"):
+        raise HTTPException(status.HTTP_409_CONFLICT, "The hospital released your slot for this request.")
+
+    if data.response == "Accepted":
+        # Lock the request so two donors cannot take the last slot at the same moment
+        db.query(BloodRequest).filter(BloodRequest.id == req.id).with_for_update().one()
+        taken = (
+            db.query(func.count(RequestResponse.id))
+            .filter(
+                RequestResponse.request_id == req.id,
+                RequestResponse.status.in_(["Accepted", "Donated"]),
+                RequestResponse.id != resp.id,
+            )
+            .scalar()
+            or 0
+        )
+        if taken >= req.units_needed:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Sorry, all slots for this request have been taken.")
+
     resp.status = data.response
     resp.responded_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(resp)
-    return incoming_out(resp, req, hosp)
+    counts = taken_counts(db, [req.id])
+    return incoming_out(resp, req, hosp, donor, counts.get(req.id, 0))
 
 
 @router.get("/me/donations", response_model=list[DonationOut])
+@router.get("/me/donations", response_model=list[DonationOut])
 def my_donations(user: User = Depends(require_role("donor")), db: Session = Depends(get_db)):
     donor = get_donor(db, user)
+    items = []
+
     rows = (
         db.query(RequestResponse, BloodRequest, Hospital)
         .join(BloodRequest, BloodRequest.id == RequestResponse.request_id)
         .join(Hospital, Hospital.id == BloodRequest.hospital_id)
         .filter(RequestResponse.donor_id == donor.id, RequestResponse.status == "Donated")
-        .order_by(RequestResponse.responded_at.desc())
         .all()
     )
-    return [
-        DonationOut(
-            id=resp.id,
-            donated_at=resp.responded_at,
-            hospital=hosp.hospital_name,
-            city=hosp.city,
-            blood_group=req.blood_group,
-        )
-        for resp, req, hosp in rows
-    ]
+    for resp, req, hosp in rows:
+        items.append(DonationOut(
+            id=str(resp.id), donated_at=resp.responded_at, hospital=hosp.hospital_name,
+            city=hosp.city, blood_group=req.blood_group,
+        ))
+
+    camp_rows = (
+        db.query(CampBooking, Camp, Hospital)
+        .join(Camp, Camp.id == CampBooking.camp_id)
+        .join(Hospital, Hospital.id == Camp.hospital_id)
+        .filter(CampBooking.donor_id == donor.id, CampBooking.status == "Attended")
+        .all()
+    )
+    for booking, camp, hosp in camp_rows:
+        items.append(DonationOut(
+            id=f"C{booking.id}",
+            donated_at=datetime.combine(camp.camp_date, camp.start_time).replace(tzinfo=timezone.utc),
+            hospital=f"{hosp.hospital_name} (camp)", city=hosp.city, blood_group=donor.blood_group,
+        ))
+
+    items.sort(key=lambda d: d.donated_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    return items

@@ -1,5 +1,6 @@
 import api from "../../api/client";
 import { toIso } from "./donorData";
+
 // The backend uses snake_case, the pages use camelCase. These two convert between them.
 const fromApi = (d) => ({
   fullName: d.full_name,
@@ -8,6 +9,7 @@ const fromApi = (d) => ({
   gender: d.gender ?? "",
   bloodGroup: d.blood_group,
   city: d.city,
+  area: d.area ?? "",
   phone: d.phone ?? "",
   lastDonation: d.last_donation_date ?? "",
 });
@@ -19,6 +21,7 @@ const toApi = (f) => ({
   gender: f.gender,
   blood_group: f.bloodGroup,
   city: f.city,
+  area: f.area.trim() || null,
   phone: f.phone,
   last_donation_date: f.lastDonation || null,
 });
@@ -45,6 +48,7 @@ export function errorMessage(err) {
   if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg.replace(/^Value error, /, "");
   return "Something went wrong. Please try again.";
 }
+
 const timeAgo = (iso) => {
   if (!iso) return "";
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
@@ -63,7 +67,8 @@ const requestFromApi = (r) => ({
   units: r.units_needed - r.units_fulfilled,
   city: r.city,
   area: r.address ? `${r.city} · ${r.address}` : r.city,
-  distance: "",
+  distance: r.distance_km != null ? `${r.distance_km.toFixed(1)} km` : "",
+  slotsLeft: r.slots_left,
   priority: r.urgency,
   received: timeAgo(r.notified_at),
   needed: r.required_by

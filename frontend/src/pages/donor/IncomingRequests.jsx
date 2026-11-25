@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { BloodChip, HospitalAvatar, Icon, PriorityBadge, ResponseActions } from "./components";
-import { eligibility } from "./donorData"
+import { eligibility } from "./donorData";
 
 const TABS = [
   ["all", "All requests"],
@@ -13,15 +13,16 @@ const TABS = [
 export default function IncomingRequests() {
   const { donor, requests, respond, available, query } = useOutletContext();
   const [tab, setTab] = useState("all");
-  const [city, setCity] = useState(donor.city);
+  // Matching now uses distance, so a request from just across a city border is still yours
+  const [city, setCity] = useState("all");
   const [selectedId, setSelectedId] = useState(null);
 
   const count = (s) => requests.filter((r) => r.status === s).length;
   const counts = {
-  all: requests.length,
-  new: count("new"),
-  accepted: count("accepted"),
-  declined: count("declined"),
+    all: requests.length,
+    new: count("new"),
+    accepted: count("accepted"),
+    declined: count("declined"),
   };
 
   const q = query.trim().toLowerCase();
@@ -34,6 +35,10 @@ export default function IncomingRequests() {
 
   const selected = list.find((r) => r.id === selectedId) ?? list[0];
   const { eligible } = eligibility(donor.lastDonation);
+
+  const where = (r) => `${r.area}${r.distance ? ` · ${r.distance} away` : ""}`;
+  const slotsText = (r) =>
+    r.slotsLeft === 0 ? "Slots full" : `${r.slotsLeft} ${r.slotsLeft === 1 ? "slot" : "slots"} left`;
 
   return (
     <>
@@ -61,15 +66,17 @@ export default function IncomingRequests() {
           ))}
         </div>
         <select className="select" aria-label="City" value={city} onChange={(e) => setCity(e.target.value)}>
-          <option value={donor.city}>{donor.city}</option>
           <option value="all">All cities</option>
+          <option value={donor.city}>{donor.city}</option>
         </select>
       </div>
 
       <div className="split">
         <div className="reqlist">
           {list.length === 0 && (
-            <div className="card empty">No requests here yet. We'll let you know when one matches.</div>
+            <div className="card empty">
+              No requests here yet. We'll let you know when one within 5 km matches.
+            </div>
           )}
 
           {list.map((r) => (
@@ -85,7 +92,7 @@ export default function IncomingRequests() {
                   <HospitalAvatar />
                   <span>
                     <strong>{r.hospital}</strong>
-                    <small>{r.area}</small>
+                    <small>{where(r)}</small>
                   </span>
                 </div>
                 <PriorityBadge level={r.priority} />
@@ -98,7 +105,7 @@ export default function IncomingRequests() {
               <div className="req__bottom">
                 <span>
                   Needed {r.needed}
-                  <small>{r.received}</small>
+                  <small>{r.received}{r.status === "new" ? ` · ${slotsText(r)}` : ""}</small>
                 </span>
                 <ResponseActions request={r} onRespond={respond} acceptLabel="Accept request" />
               </div>
@@ -120,22 +127,26 @@ export default function IncomingRequests() {
             <dl className="detail__rows">
               <div><dt>Blood group</dt><dd>{selected.group}</dd></div>
               <div><dt>Units required</dt><dd>{selected.units} {selected.units === 1 ? "unit" : "units"}</dd></div>
+              <div><dt>Slots</dt><dd>{slotsText(selected)}</dd></div>
               <div><dt>Component</dt><dd>{selected.component}</dd></div>
               <div><dt>Required by</dt><dd>{selected.needed}</dd></div>
               <div><dt>Donation location</dt><dd>{selected.place}</dd></div>
+              {selected.distance && <div><dt>Distance from you</dt><dd>{selected.distance}</dd></div>}
             </dl>
 
             <div className="match">
               <strong><Icon name="check" size={13} /> You're a match</strong>
-              <p>{donor.bloodGroup} blood group · {donor.city}</p>
+              <p>
+                {donor.bloodGroup} blood group · {selected.distance ? `${selected.distance} from you` : donor.city}
+              </p>
               <p>
                 {available ? "Available" : "Unavailable"} · 90-day gap {eligible ? "complete" : "in progress"}
               </p>
             </div>
 
             <p className="detail__note">
-              Your phone number is shared with this hospital only after you accept. The hospital
-              will confirm final donation eligibility.
+              Places are first come, first served. Your phone number is shared with this hospital
+              only after you accept, and the hospital will confirm final donation eligibility.
             </p>
           </aside>
         )}

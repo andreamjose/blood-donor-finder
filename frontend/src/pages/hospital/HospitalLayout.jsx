@@ -3,22 +3,24 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { clearSession } from "../../api/auth";
 import { UserMenu } from "../../components/Menus";
 import { Icon } from "../donor/components";
+import { useSupportUnread } from "../supportApi";
 import { fetchHospital } from "./hospitalApi";
 import "../donor/donor.css";
 import "./hospital.css";
-
 
 const NAV = [
   { to: "/hospital", label: "Dashboard", icon: "grid", end: true },
   { to: "/hospital/requests/new", label: "Create request", icon: "drop" },
   { to: "/hospital/requests", label: "My requests", icon: "inbox", end: true },
+  { to: "/hospital/camps", label: "Blood camps", icon: "calendar" },
 ];
 
 const CRUMBS = {
   "/hospital": "Overview",
   "/hospital/requests": "My requests",
   "/hospital/requests/new": "Create request",
-  "/hospital/support": "Support"
+  "/hospital/support": "Support",
+  "/hospital/camps": "Blood camps",
 };
 
 const stateStyle = {
@@ -35,6 +37,7 @@ const stateStyle = {
 export default function HospitalLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const supportUnread = useSupportUnread();
 
   const [hospital, setHospital] = useState(null);
   const [status, setStatus] = useState("loading"); // loading | ready | error
@@ -110,7 +113,8 @@ export default function HospitalLayout() {
           <strong>Every minute counts.</strong>
           <p>Mark urgent cases as Urgent or Critical so donors see them first.</p>
           <Link to="/hospital/support">
-          Get support <Icon name="external" size={11} />
+            Get support <Icon name="external" size={11} />
+            {supportUnread > 0 && <em className="dl__badge">{supportUnread}</em>}
           </Link>
         </div>
 

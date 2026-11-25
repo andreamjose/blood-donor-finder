@@ -17,6 +17,10 @@ import MyRequests from "./pages/hospital/MyRequests";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminHospitals from "./pages/admin/AdminHospitals";
 import SupportPage from "./pages/SupportPage";
+import AdminSupport from "./pages/admin/AdminSupport";
+import HospitalCamps from "./pages/hospital/Camps";
+import DonorCamps from "./pages/donor/Camps";
+
 
 export default function App() {
   return (
@@ -37,6 +41,7 @@ export default function App() {
           <Route path="profile" element={<MyProfile />} />
           <Route path="history" element={<DonationHistory />} />
           <Route path="support" element={<SupportPage />} />
+          <Route path="camps" element={<DonorCamps />} />
         </Route>
 
         <Route path="/hospital" element={<ProtectedRoute role="hospital"><HospitalLayout /></ProtectedRoute>}>
@@ -44,10 +49,12 @@ export default function App() {
           <Route path="requests" element={<MyRequests />} />
           <Route path="requests/new" element={<CreateRequest />} />
           <Route path="support" element={<SupportPage />} />
+          <Route path="camps" element={<HospitalCamps />} />
         </Route>
 
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
           <Route index element={<AdminHospitals />} />
+          <Route path="support" element={<AdminSupport />} />
         </Route>
       </Routes>
     </BrowserRouter>

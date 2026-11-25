@@ -9,6 +9,7 @@ import {
   formatDateTime,
   markDonated,
   messageFrom,
+  releaseSlot,
 } from "./hospitalApi";
 
 const FILTERS = ["All", "Open", "Fulfilled", "Expired", "Cancelled"];
@@ -60,6 +61,25 @@ export default function MyRequests() {
     setBusyId(reqId);
     try {
       const updated = await markDonated(reqId, responseId);
+      setRequests((list) => list.map((r) => (r.id === reqId ? updated : r)));
+      const list = await fetchRequestDonors(reqId);
+      setDonors((d) => ({ ...d, [reqId]: list }));
+    } catch (err) {
+      setError(messageFrom(err));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleRelease(reqId, responseId, reason) {
+    const text = reason === "no_show"
+      ? "Mark this donor as a no-show? The slot opens up and waiting donors are alerted."
+      : "Mark this donor as not suitable? The slot opens up and waiting donors are alerted.";
+    if (!window.confirm(text)) return;
+    setError("");
+    setBusyId(reqId);
+    try {
+      const updated = await releaseSlot(reqId, responseId, reason);
       setRequests((list) => list.map((r) => (r.id === reqId ? updated : r)));
       const list = await fetchRequestDonors(reqId);
       setDonors((d) => ({ ...d, [reqId]: list }));
@@ -144,11 +164,9 @@ export default function MyRequests() {
                     <td>{r.accepted_count} accepted · {r.notified_count} notified</td>
                     <td>
                       <div className="rq-row-actions">
-                        {r.accepted_count > 0 && (
-                          <button type="button" className="btn btn--ghost" onClick={() => toggleDonors(r.id)}>
-                            {openId === r.id ? "Hide donors" : "View donors"}
-                          </button>
-                        )}
+                        <button type="button" className="btn btn--ghost" onClick={() => toggleDonors(r.id)}>
+                          {openId === r.id ? "Hide donors" : "View donors"}
+                        </button>
                         {r.status === "Open" && (
                           <button
                             type="button"
@@ -173,10 +191,11 @@ export default function MyRequests() {
                             <span>
                               <strong>{d.donor_name}</strong> · {d.blood_group} · {d.phone || "no phone"}
                             </span>
-                            {d.status === "Donated" ? (
-                              <span className="status status--ok">Donated</span>
-                            ) : (
-                              r.status === "Open" && (
+                            {d.status === "Donated" && <span className="status status--ok">Donated</span>}
+                            {d.status === "NoShow" && <span className="status--closed">No-show</span>}
+                            {d.status === "Unsuitable" && <span className="status--closed">Not suitable</span>}
+                            {d.status === "Accepted" && r.status === "Open" && (
+                              <div className="rq-row-actions">
                                 <button
                                   type="button"
                                   className="btn btn--primary"
@@ -185,7 +204,23 @@ export default function MyRequests() {
                                 >
                                   Mark donated
                                 </button>
-                              )
+                                <button
+                                  type="button"
+                                  className="btn btn--ghost"
+                                  disabled={busyId === r.id}
+                                  onClick={() => handleRelease(r.id, d.response_id, "no_show")}
+                                >
+                                  No-show
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn--ghost"
+                                  disabled={busyId === r.id}
+                                  onClick={() => handleRelease(r.id, d.response_id, "unsuitable")}
+                                >
+                                  Not suitable
+                                </button>
+                              </div>
                             )}
                           </div>
                         ))}

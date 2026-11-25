@@ -2,17 +2,19 @@ import { Link, useOutletContext } from "react-router-dom";
 import {
   BloodChip, HospitalAvatar, Icon, PriorityBadge, ResponseActions, StatCard, Toggle,
 } from "./components";
-import { DONATIONS, REQUEST_COUNTS, eligibility, formatDate } from "./donorData";
+import { eligibility, formatDate } from "./donorData";
 
 export default function DonorDashboard() {
   const { donor, requests, respond, available, setAvailable, donations } = useOutletContext();
 
   const { next, eligible, daysLeft } = eligibility(donor.lastDonation);
   const firstName = donor.fullName.split(" ")[0];
-  const newCount = requests.filter((r) => r.status === "new").length;
+  // Only requests you can still act on (full ones are not "awaiting your response")
+  const newCount = requests.filter((r) => r.status === "new" && r.slotsLeft !== 0).length;
   const accepted = requests.filter((r) => r.status === "accepted").length;
   const total = String(donations.length).padStart(2, "0");
   const latest = donations[0];
+
   return (
     <>
       <div className="page-head">
@@ -29,13 +31,19 @@ export default function DonorDashboard() {
         </div>
       </div>
 
+      {!donor.area && (
+        <p className="notice notice--warn" style={{ marginBottom: "1rem" }}>
+          Add your area in <Link to="/donor/profile" className="link">My profile</Link> to receive requests within 5 km.
+        </p>
+      )}
+
       <section className={`banner${eligible ? "" : " banner--wait"}`}>
         <span className="banner__icon"><Icon name="check" size={18} /></span>
         <div>
           <strong>{eligible ? "You're ready to make a difference." : "Time to rest and recover."}</strong>
           <p>
             {eligible
-              ? `Your 90-day donation gap is complete. We'll notify you about matching requests in ${donor.city}.`
+              ? `Your 90-day donation gap is complete. We'll notify you about matching requests within 5 km of you in ${donor.city}.`
               : `You can donate again in ${daysLeft} days. We'll notify you once you're eligible.`}
           </p>
         </div>
@@ -92,7 +100,7 @@ export default function DonorDashboard() {
                   </td>
                   <td><BloodChip group={r.group} /></td>
                   <td>{r.units}</td>
-                  <td>{r.area}</td>
+                  <td>{r.area}{r.distance && ` · ${r.distance} away`}</td>
                   <td><PriorityBadge level={r.priority} /></td>
                   <td>{r.received}</td>
                   <td><ResponseActions request={r} onRespond={respond} /></td>
@@ -110,8 +118,8 @@ export default function DonorDashboard() {
             <h2>{donations.length} {donations.length === 1 ? "donation" : "donations"}. A lasting impact.</h2>
             <p>
               {latest
-              ?`Thank you for making time for others. Your most recent donation was at ${latest.hospital} on ${formatDate(latest.date)}.`
-              : "Your first donation will show up here once a hospital confirms it."}
+                ? `Thank you for making time for others. Your most recent donation was at ${latest.hospital} on ${formatDate(latest.date)}.`
+                : "Your first donation will show up here once a hospital confirms it."}
             </p>
             <Link to="/donor/history" className="link">
               View donation history <Icon name="arrow" size={13} />
@@ -125,7 +133,7 @@ export default function DonorDashboard() {
             <h2>Before you donate</h2>
             <p>Stay hydrated, have a healthy meal and bring a photo ID. The hospital will confirm eligibility.</p>
             <Link to="/guidelines" className="link">
-            Read donation guidelines <Icon name="external" size={12} />
+              Read donation guidelines <Icon name="external" size={12} />
             </Link>
           </div>
         </section>

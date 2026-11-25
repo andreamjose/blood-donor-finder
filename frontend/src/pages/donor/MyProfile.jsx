@@ -111,6 +111,9 @@ export default function MyProfile() {
                 {CITIES.map((c) => <option key={c}>{c}</option>)}
               </select>
             </Field>
+            <Field label="Area or locality (used for 5 km matching)" htmlFor="area" error={errors.area}>
+              <input id="area" value={form.area} onChange={set("area")} placeholder="e.g. Kakkanad" />
+            </Field>
             <Field label="Phone number" htmlFor="phone" error={errors.phone}>
               <input id="phone" type="tel" value={form.phone} onChange={set("phone")} />
             </Field>

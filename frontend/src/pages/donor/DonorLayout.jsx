@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearSession } from "../../api/auth";
 import { NotificationBell, UserMenu } from "../../components/Menus";
+import { useSupportUnread } from "../supportApi";
 import { Icon } from "./components";
+import { useNewCamps } from "./campsApi"
 import {
   errorMessage,
   fetchDonations,
@@ -13,13 +15,12 @@ import {
 } from "./donorApi";
 import "./donor.css";
 
-
-
 const NAV = [
   { to: "/donor", label: "Dashboard", icon: "grid", end: true },
   { to: "/donor/requests", label: "Incoming Requests", icon: "inbox", badge: true },
   { to: "/donor/profile", label: "My Profile", icon: "user" },
   { to: "/donor/history", label: "Donation History", icon: "history" },
+  { to: "/donor/camps", label: "Blood camps", icon: "calendar", campBadge: true },
 ];
 
 const CRUMBS = {
@@ -28,6 +29,7 @@ const CRUMBS = {
   "/donor/profile": "My profile",
   "/donor/history": "Donation history",
   "/donor/support": "Support",
+  "/donor/camps": "Blood camps",
 };
 
 const stateStyle = {
@@ -44,6 +46,8 @@ const stateStyle = {
 export default function DonorLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const supportUnread = useSupportUnread();
+  const newCamps = useNewCamps();
 
   const [donor, setDonor] = useState(null);
   const [available, setAvailableState] = useState(true);
@@ -138,7 +142,8 @@ export default function DonorLayout() {
     );
   }
 
-  const newRequests = requests.filter((r) => r.status === "new");
+  // Requests you can still act on (full requests do not light the badge or the bell)
+  const newRequests = requests.filter((r) => r.status === "new" && r.slotsLeft !== 0);
   const newCount = newRequests.length;
   const crumb = CRUMBS[pathname.replace(/\/$/, "")] ?? "Overview";
 
@@ -160,6 +165,7 @@ export default function DonorLayout() {
               <Icon name={item.icon} size={17} />
               <span>{item.label}</span>
               {item.badge && newCount > 0 && <em className="dl__badge">{newCount}</em>}
+              {item.campBadge && newCamps > 0 && <em className="dl__badge">{newCamps}</em>}
             </NavLink>
           ))}
         </nav>
@@ -172,7 +178,8 @@ export default function DonorLayout() {
             Donation guidelines <Icon name="external" size={11} />
           </Link>
           <Link to="/donor/support">
-          Get support <Icon name="external" size={11} />
+            Get support <Icon name="external" size={11} />
+            {supportUnread > 0 && <em className="dl__badge">{supportUnread}</em>}
           </Link>
         </div>
 

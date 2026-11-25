@@ -1,7 +1,7 @@
 """Table definitions that match the tables already created in Supabase.
 We do NOT call create_all(), the tables exist. These classes only describe them."""
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text, func,
+    Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Text, Time, func,
 )
 
 from .database import Base
@@ -27,6 +27,9 @@ class Donor(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     blood_group = Column(String, nullable=False)
     city = Column(String, nullable=False)
+    area = Column(String)
+    latitude = Column(Float)
+    longitude = Column(Float)
     phone = Column(String)
     dob = Column(Date)
     gender = Column(String)
@@ -42,6 +45,8 @@ class Hospital(Base):
     hospital_name = Column(String, nullable=False)
     city = Column(String, nullable=False)
     address = Column(String)
+    latitude = Column(Float)
+    longitude = Column(Float)
     phone = Column(String)
     license_no = Column(String)
 
@@ -72,3 +77,55 @@ class RequestResponse(Base):
     status = Column(String, default="Notified")
     notified_at = Column(DateTime(timezone=True))
     responded_at = Column(DateTime(timezone=True))
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    category = Column(String, nullable=False)
+    subject = Column(String, nullable=False)
+    status = Column(String, default="Open")
+    user_unread = Column(Boolean, default=False)
+    admin_unread = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now())
+
+
+class SupportMessage(Base):
+    __tablename__ = "support_messages"
+
+    id = Column(Integer, primary_key=True)
+    ticket_id = Column(Integer, ForeignKey("support_tickets.id"), nullable=False)
+    sender = Column(String, nullable=False)  # user | admin
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+class Camp(Base):
+    __tablename__ = "camps"
+
+    id = Column(Integer, primary_key=True)
+    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=False)
+    title = Column(String, nullable=False)
+    venue = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    camp_date = Column(Date, nullable=False)
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable=False)
+    capacity = Column(Integer, nullable=False)
+    notes = Column(Text)
+    status = Column(String, default="Open")
+    latitude = Column(Float)
+    longitude = Column(Float)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+
+class CampBooking(Base):
+    __tablename__ = "camp_bookings"
+
+    id = Column(Integer, primary_key=True)
+    camp_id = Column(Integer, ForeignKey("camps.id"), nullable=False)
+    donor_id = Column(Integer, ForeignKey("donors.id"), nullable=False)
+    status = Column(String, default="Booked")
+    booked_at = Column(DateTime(timezone=True), default=func.now())

@@ -1,17 +1,24 @@
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearSession } from "../../api/auth";
 import { UserMenu } from "../../components/Menus";
 import { Icon } from "../donor/components";
+import { useSupportUnread } from "../supportApi";
 import "../donor/donor.css";
 import "../hospital/hospital.css";
 
+const CRUMBS = { "/admin": "Hospitals", "/admin/support": "Support inbox" };
+
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const unread = useSupportUnread();
 
   function logout() {
     clearSession();
     navigate("/login");
   }
+
+  const crumb = CRUMBS[pathname.replace(/\/$/, "")] ?? "Hospitals";
 
   return (
     <div className="dl">
@@ -30,6 +37,11 @@ export default function AdminLayout() {
             <Icon name="hospital" size={17} />
             <span>Hospitals</span>
           </NavLink>
+          <NavLink to="/admin/support" className="dl__link">
+            <Icon name="inbox" size={17} />
+            <span>Support inbox</span>
+            {unread > 0 && <em className="dl__badge">{unread}</em>}
+          </NavLink>
         </nav>
 
         <button type="button" className="dl__logout" onClick={logout}>
@@ -41,7 +53,7 @@ export default function AdminLayout() {
       <div className="dl__main">
         <header className="dl__top">
           <p className="dl__crumbs">
-            Admin workspace <span>/</span> <strong>Hospitals</strong>
+            Admin workspace <span>/</span> <strong>{crumb}</strong>
           </p>
           <UserMenu name="Administrator" sub="Admin" links={[]} onLogout={logout} />
         </header>

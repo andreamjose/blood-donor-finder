@@ -130,6 +130,12 @@ export function HospitalAvatar() {
 export function ResponseActions({ request, onRespond, acceptLabel = "Accept" }) {
   if (request.status === "accepted") return <span className="status status--ok">Accepted</span>;
   if (request.status === "declined") return <span className="status status--muted">Declined</span>;
+  // The hospital freed this donor's slot (no-show or not suitable)
+  if (request.status === "released") return <span className="status status--muted">Slot released</span>;
+  // First come, first served: once every slot is taken, late donors can no longer accept
+  if (request.status === "new" && request.slotsLeft === 0) {
+    return <span className="status status--muted">Slots full</span>;
+  }
   return (
     <div className="actions">
       <button type="button" className="btn btn--primary" onClick={() => onRespond(request.id, "accepted")}>
